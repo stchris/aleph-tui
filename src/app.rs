@@ -1,4 +1,4 @@
-use crate::models::Status;
+use crate::models::{Metadata, Status};
 use chrono::{DateTime, Local};
 use ratatui::widgets::TableState;
 use reqwest::header::AUTHORIZATION;
@@ -11,6 +11,7 @@ use std::fs::read_to_string;
 #[derive(Debug)]
 pub struct App {
     pub status: Status,
+    pub metadata: Metadata,
     pub config: Config,
     pub current_profile: usize,
     pub should_quit: bool,
@@ -20,6 +21,7 @@ pub struct App {
     pub current_view: CurrentView,
     pub profile_tablestate: TableState,
     pub last_fetch: DateTime<Local>,
+    pub is_fetching: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -162,24 +164,42 @@ impl App {
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
             last_fetch,
+            metadata: Metadata::default(),
+            is_fetching: false,
         }
     }
 
-    pub(crate) fn update_status(&mut self) -> color_eyre::Result<()> {
+    pub(crate) fn fetch(&mut self) -> color_eyre::Result<()> {
+        self.is_fetching = true;
         let client = reqwest::blocking::Client::new();
+        let auth_header = format!("Bearer {}", self.current_profile().token);
+
         let url = format!(
             "{}/api/2/status",
             self.config.profiles[self.current_profile].url
         );
-        let auth_header = format!("Bearer {}", self.current_profile().token);
         let status = client
+            .get(url)
+            .header(AUTHORIZATION, auth_header.to_string())
+            .send()?
+            .error_for_status()?
+            .json()?;
+        self.status = status;
+
+        let url = format!(
+            "{}/api/2/metadata",
+            self.config.profiles[self.current_profile].url
+        );
+        let metadata = client
             .get(url)
             .header(AUTHORIZATION, auth_header)
             .send()?
             .error_for_status()?
             .json()?;
-        self.status = status;
+        self.metadata = metadata;
+
         self.error_message = "".to_string();
+        self.is_fetching = false;
         Ok(())
     }
 
@@ -211,6 +231,7 @@ impl App {
                 .is_some()
         {
             self.current_profile += 1;
+            self.clear_state();
         }
     }
 
@@ -223,6 +244,7 @@ impl App {
                 .is_some()
         {
             self.current_profile -= 1;
+            self.clear_state();
         }
     }
 
@@ -238,6 +260,11 @@ impl App {
         if index < self.status.results.len() {
             self.collection_tablestate.select(Some(index + 1));
         }
+    }
+
+    fn clear_state(&mut self) {
+        self.status = Status::default();
+        self.metadata = Metadata::default();
     }
 }
 

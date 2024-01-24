@@ -1,10 +1,10 @@
 use chrono::{NaiveDateTime, Utc};
-use chrono_humanize::HumanTime;
+use chrono_humanize::{Accuracy, HumanTime, Tense};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
     style::{Color, Modifier, Style, Stylize},
-    text::Text,
+    text::Line,
     widgets::{Block, Borders, Paragraph, Row, Table},
 };
 
@@ -37,7 +37,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(4),
             Constraint::Min(1),
             Constraint::Length(1),
             Constraint::Length(1),
@@ -45,18 +45,35 @@ pub fn render(app: &mut App, f: &mut Frame) {
         .split(f.size());
     let title_block = Block::default()
         .borders(Borders::ALL)
+        .border_type(ratatui::widgets::BorderType::Rounded)
         .style(Style::default());
 
-    let title = Paragraph::new(Text::styled(
-        format!(
-            "{}: {} jobs running",
-            app.current_profile().name,
-            app.status.total
+    let text = vec![
+        Line::from(match &app.metadata.app.title {
+            Some(title) => format!(
+                "{} ({}): {} jobs running",
+                title,
+                app.current_profile().name,
+                app.status.total
+            ),
+            None => format!(
+                "({}): {} jobs running",
+                app.current_profile().name,
+                app.status.total
+            ),
+        }),
+        Line::from(
+            match (&app.metadata.app.version, &app.metadata.app.ftm_version) {
+                (Some(aleph), Some(ftm)) => format!("version: {}, followthemoney: {}", aleph, ftm),
+                (None, Some(ftm)) => format!("followthemoney: {}", ftm),
+                (Some(aleph), None) => format!("version: {}", aleph),
+                (None, None) => String::default(),
+            },
         ),
-        Style::default().fg(Color::Green),
-    ))
-    .block(title_block);
-
+    ];
+    let title = Paragraph::new(text)
+        .style(Style::default().fg(Color::Green))
+        .block(title_block);
     f.render_widget(title, chunks[0]);
 
     let mut rows = Vec::new();
@@ -67,8 +84,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
                 let last_update = NaiveDateTime::parse_from_str(&t, "%Y-%m-%dT%H:%M:%S.%f")
                     .expect("Failed to parse last_update timestamp");
                 let last_update = last_update - now;
-                let last_update = HumanTime::from(last_update).to_string();
-                last_update
+                HumanTime::from(last_update).to_text_en(Accuracy::Precise, Tense::Present)
             }
             None => "".to_string(),
         };
@@ -131,9 +147,18 @@ pub fn render(app: &mut App, f: &mut Frame) {
         Block::default().title(format!("aleph-tui version {}", app.version)),
         status_bar_chunks[0],
     );
+    let fetching_icon = match app.is_fetching {
+        true => "📥",
+        false => "",
+    };
+    let last_fetch_text = format!(
+        "last fetch: {} {}",
+        HumanTime::from(app.last_fetch),
+        fetching_icon
+    );
     f.render_widget(
         Block::default()
-            .title(format!("last fetch: {}", HumanTime::from(app.last_fetch)))
+            .title(last_fetch_text)
             .title_alignment(Alignment::Right),
         status_bar_chunks[1],
     );

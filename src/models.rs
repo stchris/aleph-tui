@@ -46,6 +46,20 @@ pub struct Status {
     pub total: u32,
 }
 
+#[derive(Debug, Default, Deserialize, Clone)]
+pub struct MetadataApp {
+    pub title: Option<String>,
+    pub version: Option<String>,
+    pub ftm_version: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize, Clone)]
+pub struct Metadata {
+    pub status: String,
+    pub maintenance: bool,
+    pub app: MetadataApp,
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::read_to_string;
@@ -56,5 +70,16 @@ mod tests {
     fn test_status_deserialization() {
         let test = read_to_string("testdata/results.json").unwrap();
         let _: Status = serde_json::from_str(&test).unwrap();
+    }
+
+    #[test]
+    fn test_metadata_deserialization() {
+        let test = read_to_string("testdata/metadata.json").unwrap();
+        let meta: Metadata = serde_json::from_str(&test).unwrap();
+        assert!(meta.status == "ok");
+        assert!(meta.maintenance == false);
+        assert!(meta.app.title.unwrap() == "OCCRP Aleph");
+        assert!(meta.app.version.unwrap() == "3.15.5");
+        assert!(meta.app.ftm_version.unwrap() == "3.5.8");
     }
 }

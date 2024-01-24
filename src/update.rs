@@ -32,12 +32,10 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
 pub(crate) fn fetch(app: &mut App) {
     let elapsed = Local::now() - app.last_fetch;
     if elapsed.num_seconds() > app.config.fetch_interval {
-        match app.update_status() {
-            Ok(()) => {
-                app.last_fetch = Local::now();
-                app.error_message = String::default();
-            }
-            Err(e) => app.error_message = e.to_string(),
-        }
+        app.error_message = match app.fetch() {
+            Ok(()) => String::default(),
+            Err(e) => e.to_string(),
+        };
+        app.last_fetch = Local::now();
     }
 }

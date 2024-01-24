@@ -15,12 +15,12 @@ use ratatui::prelude::{CrosstermBackend, Terminal};
 use tui::Tui;
 fn main() -> Result<()> {
     let mut app = App::new();
-    app.update_status()
+    app.fetch()
         .unwrap_or_else(|e| app.error_message = e.to_string());
 
     let backend = CrosstermBackend::new(std::io::stderr());
     let terminal = Terminal::new(backend)?;
-    let events = EventHandler::new(250);
+    let events = EventHandler::new(50);
     let mut tui = Tui::new(terminal, events);
     tui.enter()?;
 
