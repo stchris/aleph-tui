@@ -231,6 +231,7 @@ impl App {
                 .is_some()
         {
             self.current_profile += 1;
+            self.clear_state();
         }
     }
 
@@ -243,6 +244,7 @@ impl App {
                 .is_some()
         {
             self.current_profile -= 1;
+            self.clear_state();
         }
     }
 
@@ -258,6 +260,11 @@ impl App {
         if index < self.status.results.len() {
             self.collection_tablestate.select(Some(index + 1));
         }
+    }
+
+    fn clear_state(&mut self) {
+        self.status = Status::default();
+        self.metadata = Metadata::default();
     }
 }
 
