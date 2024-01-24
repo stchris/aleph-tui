@@ -1,4 +1,4 @@
-use crate::models::Status;
+use crate::models::{Metadata, Status};
 use chrono::{DateTime, Local};
 use ratatui::widgets::TableState;
 use reqwest::header::AUTHORIZATION;
@@ -11,6 +11,7 @@ use std::fs::read_to_string;
 #[derive(Debug)]
 pub struct App {
     pub status: Status,
+    pub metadata: Metadata,
     pub config: Config,
     pub current_profile: usize,
     pub should_quit: bool,
@@ -162,6 +163,7 @@ impl App {
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
             last_fetch,
+            metadata: Metadata::default(),
         }
     }
 
@@ -179,6 +181,24 @@ impl App {
             .error_for_status()?
             .json()?;
         self.status = status;
+        self.error_message = "".to_string();
+        Ok(())
+    }
+
+    pub(crate) fn update_metadata(&mut self) -> color_eyre::Result<()> {
+        let client = reqwest::blocking::Client::new();
+        let url = format!(
+            "{}/api/2/metadata",
+            self.config.profiles[self.current_profile].url
+        );
+        let auth_header = format!("Bearer {}", self.current_profile().token);
+        let metadata = client
+            .get(url)
+            .header(AUTHORIZATION, auth_header)
+            .send()?
+            .error_for_status()?
+            .json()?;
+        self.metadata = metadata;
         self.error_message = "".to_string();
         Ok(())
     }

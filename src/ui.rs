@@ -4,7 +4,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
     style::{Color, Modifier, Style, Stylize},
-    text::Text,
+    text::Line,
     widgets::{Block, Borders, Paragraph, Row, Table},
 };
 
@@ -37,7 +37,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(4),
             Constraint::Min(1),
             Constraint::Length(1),
             Constraint::Length(1),
@@ -47,16 +47,21 @@ pub fn render(app: &mut App, f: &mut Frame) {
         .borders(Borders::ALL)
         .style(Style::default());
 
-    let title = Paragraph::new(Text::styled(
-        format!(
-            "{}: {} jobs running",
+    let text = vec![
+        Line::from(format!(
+            "{} ({}): {} jobs running",
+            app.metadata.app.title,
             app.current_profile().name,
             app.status.total
-        ),
-        Style::default().fg(Color::Green),
-    ))
-    .block(title_block);
-
+        )),
+        Line::from(format!(
+            "version: {}, followthemoney: {}",
+            app.metadata.app.version, app.metadata.app.ftm_version
+        )),
+    ];
+    let title = Paragraph::new(text)
+        .style(Style::default().fg(Color::Green))
+        .block(title_block);
     f.render_widget(title, chunks[0]);
 
     let mut rows = Vec::new();
@@ -67,8 +72,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
                 let last_update = NaiveDateTime::parse_from_str(&t, "%Y-%m-%dT%H:%M:%S.%f")
                     .expect("Failed to parse last_update timestamp");
                 let last_update = last_update - now;
-                let last_update = HumanTime::from(last_update).to_string();
-                last_update
+                HumanTime::from(last_update).to_string()
             }
             None => "".to_string(),
         };

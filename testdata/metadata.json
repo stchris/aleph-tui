@@ -1,0 +1,24 @@
+{
+    "status": "ok",
+    "maintenance": false,
+    "app": {
+        "title": "OCCRP Aleph",
+        "version": "3.15.5",
+        "ftm_version": "3.5.8",
+        "banner": null,
+        "ui_uri": "https://aleph.my.domain",
+        "messages_url": "https://status.aleph.my.domain/messages.json",
+        "publish": true,
+        "logo": "https://aleph.my.domain/common/logo/WhiteTransparent_globe.png",
+        "favicon": "https://aleph.my.domain/common/logo/RedTransparent_globe.png",
+        "locale": "en",
+        "locales": {
+            "ru": "\u0440\u0443\u0441\u0441\u043a\u0438\u0439",
+            "es": "espa\u00f1ol",
+            "de": "Deutsch",
+            "en": "English",
+            "ar": "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
+            "fr": "fran\u00e7ais"
+        }
+    }
+}
