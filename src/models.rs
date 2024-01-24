@@ -48,9 +48,9 @@ pub struct Status {
 
 #[derive(Debug, Default, Deserialize, Clone)]
 pub struct MetadataApp {
-    pub title: String,
-    pub version: String,
-    pub ftm_version: String,
+    pub title: Option<String>,
+    pub version: Option<String>,
+    pub ftm_version: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize, Clone)]
@@ -78,8 +78,8 @@ mod tests {
         let meta: Metadata = serde_json::from_str(&test).unwrap();
         assert!(meta.status == "ok");
         assert!(meta.maintenance == false);
-        assert!(meta.app.title == "OCCRP Aleph");
-        assert!(meta.app.version == "3.15.5");
-        assert!(meta.app.ftm_version == "3.5.8");
+        assert!(meta.app.title.unwrap() == "OCCRP Aleph");
+        assert!(meta.app.version.unwrap() == "3.15.5");
+        assert!(meta.app.ftm_version.unwrap() == "3.5.8");
     }
 }

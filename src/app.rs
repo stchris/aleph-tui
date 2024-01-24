@@ -21,6 +21,7 @@ pub struct App {
     pub current_view: CurrentView,
     pub profile_tablestate: TableState,
     pub last_fetch: DateTime<Local>,
+    pub is_fetching: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -164,34 +165,31 @@ impl App {
             profile_tablestate: TableState::default(),
             last_fetch,
             metadata: Metadata::default(),
+            is_fetching: false,
         }
     }
 
-    pub(crate) fn update_status(&mut self) -> color_eyre::Result<()> {
+    pub(crate) fn fetch(&mut self) -> color_eyre::Result<()> {
+        self.is_fetching = true;
         let client = reqwest::blocking::Client::new();
+        let auth_header = format!("Bearer {}", self.current_profile().token);
+
         let url = format!(
             "{}/api/2/status",
             self.config.profiles[self.current_profile].url
         );
-        let auth_header = format!("Bearer {}", self.current_profile().token);
         let status = client
             .get(url)
-            .header(AUTHORIZATION, auth_header)
+            .header(AUTHORIZATION, auth_header.to_string())
             .send()?
             .error_for_status()?
             .json()?;
         self.status = status;
-        self.error_message = "".to_string();
-        Ok(())
-    }
 
-    pub(crate) fn update_metadata(&mut self) -> color_eyre::Result<()> {
-        let client = reqwest::blocking::Client::new();
         let url = format!(
             "{}/api/2/metadata",
             self.config.profiles[self.current_profile].url
         );
-        let auth_header = format!("Bearer {}", self.current_profile().token);
         let metadata = client
             .get(url)
             .header(AUTHORIZATION, auth_header)
@@ -199,7 +197,9 @@ impl App {
             .error_for_status()?
             .json()?;
         self.metadata = metadata;
+
         self.error_message = "".to_string();
+        self.is_fetching = false;
         Ok(())
     }
 
