@@ -1,5 +1,6 @@
 # Unreleased
 
+- made status.collection.xref and status.collection.restricted fields optional for backwards compatibility
 - added installation hints to the README
 
 # 0.1.1
