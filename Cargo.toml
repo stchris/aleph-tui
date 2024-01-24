@@ -46,3 +46,4 @@ publish-jobs = ["homebrew"]
 publish = false
 push = true
 tag = true
+pre-release-hook = ["git", "cliff", "-o", "CHANGELOG.md", "--tag", "{{version}}" ]
