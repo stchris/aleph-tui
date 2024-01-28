@@ -148,7 +148,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
         status_bar_chunks[0],
     );
     let fetching_icon = match app.is_fetching {
-        true => "📥",
+        true => "🔄",
         false => "",
     };
     let last_fetch_text = format!(
