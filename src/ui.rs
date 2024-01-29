@@ -1,5 +1,6 @@
 use chrono::{NaiveDateTime, Utc};
 use chrono_humanize::{Accuracy, HumanTime, Tense};
+use num_format::{Locale, ToFormattedString};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
@@ -92,9 +93,9 @@ pub fn render(app: &mut App, f: &mut Frame) {
         rows.push(Row::new(vec![
             result.collection.id.to_string(),
             result.collection.label.to_string(),
-            result.finished.to_string(),
-            result.running.to_string(),
-            result.pending.to_string(),
+            result.finished.to_formatted_string(&Locale::en),
+            result.running.to_formatted_string(&Locale::en),
+            result.pending.to_formatted_string(&Locale::en),
             last_update,
         ]))
     }
