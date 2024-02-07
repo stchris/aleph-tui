@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### Miscellaneous Tasks
 
 - Cargo update
+- 0.2.0 changelog
 
 ## [0.1.3] - 2024-01-24
 
