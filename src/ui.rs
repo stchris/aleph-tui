@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
     style::{Color, Modifier, Style, Stylize},
-    text::Line,
+    text::{Line, Text},
     widgets::{Block, Borders, Paragraph, Row, Table},
 };
 
@@ -91,31 +91,31 @@ pub fn render(app: &mut App, f: &mut Frame) {
         };
 
         rows.push(Row::new(vec![
-            result.collection.id.to_string(),
-            result.collection.label.to_string(),
-            result.finished.to_formatted_string(&Locale::en),
-            result.running.to_formatted_string(&Locale::en),
-            result.pending.to_formatted_string(&Locale::en),
-            last_update,
-        ]))
+            Text::raw(result.collection.id.to_string()),
+            Text::raw(result.collection.label.to_string()),
+            Text::raw(result.finished.to_formatted_string(&Locale::en)).right_aligned(),
+            Text::raw(result.running.to_formatted_string(&Locale::en)).right_aligned(),
+            Text::raw(result.pending.to_formatted_string(&Locale::en)).right_aligned(),
+            Text::raw(last_update).right_aligned(),
+        ]));
     }
     let widths = [
         Constraint::Length(5),
-        Constraint::Min(30),
-        Constraint::Length(10),
-        Constraint::Length(10),
-        Constraint::Length(10),
+        Constraint::Fill(3),
+        Constraint::Fill(1),
+        Constraint::Fill(1),
+        Constraint::Fill(1),
         Constraint::Length(25),
     ];
     let table = Table::new(rows, widths)
         .header(
             Row::new(vec![
-                "ID",
-                "Label",
-                "Finished",
-                "Running",
-                "Pending",
-                "Last update",
+                Text::raw("ID"),
+                Text::raw("Label"),
+                Text::raw("Finished").right_aligned(),
+                Text::raw("Running").right_aligned(),
+                Text::raw("Pending").right_aligned(),
+                Text::raw("Last update").right_aligned(),
             ])
             .style(
                 Style::new()
@@ -140,8 +140,8 @@ pub fn render(app: &mut App, f: &mut Frame) {
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Length(25),
-            Constraint::Length(50),
-            Constraint::Min(1),
+            Constraint::Fill(1),
+            Constraint::Min(35),
         ])
         .split(chunks[3]);
     f.render_widget(
@@ -160,7 +160,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
     f.render_widget(
         Block::default()
             .title(last_fetch_text)
-            .title_alignment(Alignment::Right),
+            .title_alignment(Alignment::Left),
         status_bar_chunks[1],
     );
     f.render_widget(
