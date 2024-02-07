@@ -2,12 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2024-02-07
+
+### Features
+
+- Format large numbers
+- Use flex layouts
+
+### Miscellaneous Tasks
+
+- Cargo update
+
 ## [0.1.3] - 2024-01-24
 
 ### Miscellaneous Tasks
 
 - Add installation hints to README
 - Add a changelog
+- Release aleph-tui version 0.1.3
 
 ## [0.1.2] - 2024-01-20
 
