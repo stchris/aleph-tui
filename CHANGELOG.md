@@ -2,28 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2024-03-04
+
+### 🚀 Features
+
+- Format large numbers
+- Send user agent header including version
+- Accept a profile name as argument
+
+### ⚙️ Miscellaneous Tasks
+
+- Cargo update
+- Cargo-dist 0.10.0
+- Clippy fixes
+
 ## [0.1.3] - 2024-01-24
 
-### Miscellaneous Tasks
+### ⚙️ Miscellaneous Tasks
 
 - Add installation hints to README
 - Add a changelog
+- Release aleph-tui version 0.1.3
 
 ## [0.1.2] - 2024-01-20
 
-### Miscellaneous Tasks
+### ⚙️ Miscellaneous Tasks
 
 - Release aleph-tui version 0.1.2
 
 ## [0.1.1] - 2024-01-20
 
-### Miscellaneous Tasks
+### ⚙️ Miscellaneous Tasks
 
 - Release aleph-tui version 0.1.1
 
 ## [0.1.0] - 2024-01-19
 
-### Miscellaneous Tasks
+### ⚙️ Miscellaneous Tasks
 
 - Cargo-dist
 - Configure cargo-release
