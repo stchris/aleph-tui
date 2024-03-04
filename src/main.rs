@@ -15,6 +15,11 @@ use ratatui::prelude::{CrosstermBackend, Terminal};
 use tui::Tui;
 fn main() -> Result<()> {
     let mut app = App::new();
+    match std::env::args().into_iter().skip(1).next() {
+        Some(profile) => app.set_profile(profile)?,
+        None => {}
+    }
+
     app.fetch()
         .unwrap_or_else(|e| app.error_message = e.to_string());
 

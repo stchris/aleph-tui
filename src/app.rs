@@ -1,5 +1,6 @@
 use crate::models::{Metadata, Status};
 use chrono::{DateTime, Local};
+use color_eyre::eyre::eyre;
 use ratatui::widgets::TableState;
 use reqwest::header::AUTHORIZATION;
 use serde::{
@@ -216,6 +217,23 @@ impl App {
 
     pub fn show_profile_selector(&self) -> bool {
         self.current_view == CurrentView::ProfileSwitcher
+    }
+
+    pub fn set_profile(&mut self, profile: String) -> color_eyre::Result<()> {
+        let p = self
+            .config
+            .profiles
+            .iter()
+            .filter(|p| p.name == profile)
+            .next();
+        match p {
+            Some(p) => {
+                self.profile_tablestate.select(Some(p.index));
+                self.current_profile = p.index;
+                Ok(())
+            }
+            None => Err(eyre!("Profile '{:?}' not found", profile)),
+        }
     }
 
     pub fn quit(&mut self) {
