@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Cargo update
 - Cargo-dist 0.10.0
 - Clippy fixes
+- Update changelog
 
 ## [0.1.3] - 2024-01-24
 
