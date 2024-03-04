@@ -273,6 +273,7 @@ impl App {
     fn clear_state(&mut self) {
         self.status = Status::default();
         self.metadata = Metadata::default();
+        self.error_message = String::default();
     }
 }
 
