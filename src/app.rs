@@ -305,8 +305,8 @@ impl App {
         println!("aleph-tui [PROFILE]");
         println!();
         println!("OPTIONS");
-        println!("--version\tPrint version");
-        println!("--help\tShow help");
+        println!("--version   Print version");
+        println!("--help      Show help");
     }
 }
 
