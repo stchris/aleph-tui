@@ -4,7 +4,7 @@ use num_format::{Locale, ToFormattedString};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
-    style::{Color, Modifier, Style, Stylize},
+    style::{Modifier, Style, Stylize},
     text::Line,
     widgets::{Block, Borders, Paragraph, Row, Table},
 };
@@ -46,8 +46,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
         .split(f.size());
     let title_block = Block::default()
         .borders(Borders::ALL)
-        .border_type(ratatui::widgets::BorderType::Rounded)
-        .style(Style::default());
+        .border_type(ratatui::widgets::BorderType::Rounded);
 
     let text = vec![
         Line::from(match &app.metadata.app.title {
@@ -72,9 +71,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
             },
         ),
     ];
-    let title = Paragraph::new(text)
-        .style(Style::default().fg(Color::Green))
-        .block(title_block);
+    let title = Paragraph::new(text).block(title_block);
     f.render_widget(title, chunks[0]);
 
     let mut rows = Vec::new();
@@ -117,13 +114,6 @@ pub fn render(app: &mut App, f: &mut Frame) {
                 "Pending",
                 "Last update",
             ])
-            .style(
-                Style::new()
-                    .bold()
-                    .blue()
-                    .underline_color(Color::Blue)
-                    .add_modifier(Modifier::UNDERLINED),
-            )
             .bottom_margin(1),
         )
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
@@ -173,8 +163,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
     if app.show_profile_selector() {
         let popup_block = Block::default()
             .title("Select profile")
-            .borders(Borders::ALL)
-            .style(Style::default().bg(Color::Blue));
+            .borders(Borders::ALL);
 
         let area = centered_rect(40, 25, f.size());
         f.render_widget(popup_block.clone(), area);
