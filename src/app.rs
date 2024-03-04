@@ -284,6 +284,21 @@ impl App {
         self.status = Status::default();
         self.metadata = Metadata::default();
     }
+
+    pub(crate) fn print_version(&self) {
+        println!("aleph-tui {}", self.version);
+    }
+
+    pub(crate) fn print_help(&self) {
+        println!("aleph-tui");
+        println!();
+        println!("USAGE");
+        println!("aleph-tui [PROFILE]");
+        println!();
+        println!("OPTIONS");
+        println!("--version\tPrint version");
+        println!("--help\tShow help");
+    }
 }
 
 impl Default for App {

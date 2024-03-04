@@ -7,6 +7,8 @@ pub mod tui;
 pub mod ui;
 pub mod update;
 
+use std::process::ExitCode;
+
 use app::App;
 
 use color_eyre::Result;
@@ -15,10 +17,27 @@ use ratatui::prelude::{CrosstermBackend, Terminal};
 use tui::Tui;
 fn main() -> Result<()> {
     let mut app = App::new();
-    match std::env::args().into_iter().skip(1).next() {
-        Some(profile) => app.set_profile(profile)?,
-        None => {}
-    }
+    let first_arg = std::env::args().into_iter().skip(1).next();
+    let quit = match first_arg {
+        Some(arg) => match arg.as_str() {
+            "--version" => {
+                app.print_version();
+                true
+            }
+            "--help" => {
+                app.print_help();
+                true
+            }
+            _ => {
+                app.set_profile(arg)?;
+                false
+            }
+        },
+        None => false,
+    };
+    if quit {
+        std::process::exit(0);
+    };
 
     app.fetch()
         .unwrap_or_else(|e| app.error_message = e.to_string());
