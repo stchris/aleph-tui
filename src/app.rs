@@ -1,5 +1,6 @@
 use crate::models::{Metadata, Status};
 use chrono::{DateTime, Local};
+use color_eyre::eyre::eyre;
 use ratatui::widgets::TableState;
 use reqwest::header::AUTHORIZATION;
 use serde::{
@@ -226,6 +227,23 @@ impl App {
         self.current_view == CurrentView::ProfileSwitcher
     }
 
+    pub fn set_profile(&mut self, profile: String) -> color_eyre::Result<()> {
+        let p = self
+            .config
+            .profiles
+            .iter()
+            .filter(|p| p.name == profile)
+            .next();
+        match p {
+            Some(p) => {
+                self.profile_tablestate.select(Some(p.index));
+                self.current_profile = p.index;
+                Ok(())
+            }
+            None => Err(eyre!("Profile '{:?}' not found", profile)),
+        }
+    }
+
     pub fn quit(&mut self) {
         self.should_quit = true;
     }
@@ -274,6 +292,21 @@ impl App {
         self.status = Status::default();
         self.metadata = Metadata::default();
         self.error_message = String::default();
+    }
+
+    pub(crate) fn print_version(&self) {
+        println!("aleph-tui {}", self.version);
+    }
+
+    pub(crate) fn print_help(&self) {
+        println!("aleph-tui");
+        println!();
+        println!("USAGE");
+        println!("aleph-tui [PROFILE]");
+        println!();
+        println!("OPTIONS");
+        println!("--version\tPrint version");
+        println!("--help\tShow help");
     }
 }
 
