@@ -7,8 +7,6 @@ pub mod tui;
 pub mod ui;
 pub mod update;
 
-use std::process::ExitCode;
-
 use app::App;
 
 use color_eyre::Result;
@@ -17,7 +15,7 @@ use ratatui::prelude::{CrosstermBackend, Terminal};
 use tui::Tui;
 fn main() -> Result<()> {
     let mut app = App::new();
-    let first_arg = std::env::args().into_iter().skip(1).next();
+    let first_arg = std::env::args().nth(1);
     let quit = match first_arg {
         Some(arg) => match arg.as_str() {
             "--version" => {

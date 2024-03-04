@@ -228,12 +228,7 @@ impl App {
     }
 
     pub fn set_profile(&mut self, profile: String) -> color_eyre::Result<()> {
-        let p = self
-            .config
-            .profiles
-            .iter()
-            .filter(|p| p.name == profile)
-            .next();
+        let p = self.config.profiles.iter().find(|p| p.name == profile);
         match p {
             Some(p) => {
                 self.profile_tablestate.select(Some(p.index));
