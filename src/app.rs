@@ -181,6 +181,10 @@ impl App {
         let status = client
             .get(url)
             .header(AUTHORIZATION, auth_header.to_string())
+            .header(
+                reqwest::header::USER_AGENT,
+                format!("aleph-tui/{}", self.version),
+            )
             .send()?
             .error_for_status()?
             .json()?;
@@ -193,6 +197,10 @@ impl App {
         let metadata = client
             .get(url)
             .header(AUTHORIZATION, auth_header)
+            .header(
+                reqwest::header::USER_AGENT,
+                format!("aleph-tui/{}", self.version),
+            )
             .send()?
             .error_for_status()?
             .json()?;
