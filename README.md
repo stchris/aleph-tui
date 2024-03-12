@@ -2,6 +2,9 @@
 
 This is a text UI for [aleph](https://www.github.com/alephdata/aleph). It allows one to monitor the status of an Aleph instance in real time. It uses the Aleph API to retrieve this information and shows roughly the same data one would see on Aleph's status page.
 
+![aleph-tui](aleph-tui.png)
+![aleph-tui with profile selection menu open](aleph-tui-profile-selector.png)
+
 ## Installation
 
 Check the individual [release pages](https://github.com/stchris/aleph-tui/releases) for instructions.
