@@ -98,7 +98,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
     }
     let widths = [
         Constraint::Length(5),
-        Constraint::Min(30),
+        Constraint::Min(20),
         Constraint::Length(10),
         Constraint::Length(10),
         Constraint::Length(10),
@@ -128,11 +128,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     let status_bar_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Length(25),
-            Constraint::Length(50),
-            Constraint::Min(1),
-        ])
+        .constraints([Constraint::Min(1), Constraint::Min(1), Constraint::Min(25)])
         .split(chunks[3]);
     f.render_widget(
         Block::default().title(format!("aleph-tui version {}", app.version)),
@@ -150,7 +146,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
     f.render_widget(
         Block::default()
             .title(last_fetch_text)
-            .title_alignment(Alignment::Right),
+            .title_alignment(Alignment::Left),
         status_bar_chunks[1],
     );
     f.render_widget(
