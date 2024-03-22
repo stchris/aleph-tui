@@ -16,7 +16,7 @@ crossterm = "0.27"
 home = "0.5"
 num-format = "0.4"
 ratatui = "0.26"
-reqwest = { version = "0.11", features = ["blocking", "json"] }
+reqwest = { version = "0.12", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
@@ -29,7 +29,7 @@ lto = "thin"
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.10.0"
+cargo-dist-version = "0.12.0"
 # CI backends to support
 ci = ["github"]
 # The installers to generate for each app
@@ -42,6 +42,8 @@ pr-run-mode = "plan"
 tap = "stchris/homebrew-formulae"
 # Publish jobs to run in CI
 publish-jobs = ["homebrew"]
+# Whether to install an updater program
+install-updater = false
 
 [workspace.metadata.release]
 publish = false
