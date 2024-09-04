@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Row, Table},
 };
 
-use crate::app::App;
+use crate::{app::App, models::StageOrStages};
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
@@ -87,9 +87,25 @@ pub fn render(app: &mut App, f: &mut Frame) {
             None => "".to_string(),
         };
 
+        let collection_id = match &result.collection {
+            Some(c) => c.id.to_string(),
+            None => "-".to_string(),
+        };
+        let collection_label = match &result.collection {
+            Some(c) => c.label.to_string(),
+            None => match result.stages.clone() {
+                Some(s) => match s {
+                    StageOrStages::Stage(s) => s.stage,
+                    StageOrStages::Stages(v) => {
+                        v.iter().map(|s| s.stage.to_string() + ", ").collect()
+                    }
+                },
+                None => "".to_string(),
+            },
+        };
         rows.push(Row::new(vec![
-            result.collection.id.to_string(),
-            result.collection.label.to_string(),
+            collection_id,
+            collection_label,
             result.finished.to_formatted_string(&Locale::en),
             result.running.to_formatted_string(&Locale::en),
             result.pending.to_formatted_string(&Locale::en),

@@ -30,6 +30,22 @@ pub struct Collection {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct Stage {
+    pub job_id: String,
+    pub stage: String,
+    pub finished: u32,
+    pub running: u32,
+    pub pending: u32,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum StageOrStages {
+    Stage(Stage),
+    Stages(Vec<Stage>),
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct StatusResult {
     pub finished: u32,
     pub running: u32,
@@ -37,7 +53,8 @@ pub struct StatusResult {
     pub start_time: Option<String>,
     pub end_time: Option<String>,
     pub last_update: Option<String>,
-    pub collection: Collection,
+    pub collection: Option<Collection>,
+    pub stages: Option<StageOrStages>,
 }
 
 #[derive(Debug, Default, Deserialize, Clone)]
@@ -73,11 +90,30 @@ mod tests {
     }
 
     #[test]
+    fn test_status_400_deserialization() {
+        let test = read_to_string("testdata/results400.json").unwrap();
+        let status: Status = serde_json::from_str(&test).unwrap();
+        let stage = status.results[0].stages.as_ref().unwrap();
+        if let StageOrStages::Stages(stages) = stage {
+            assert!(stages[0].stage == "exportsearch")
+        } else {
+            panic!("Unexpected stage")
+        }
+    }
+
+    #[test]
+    fn test_deserialization_no_collection() {
+        let test: String = read_to_string("testdata/export.json").unwrap();
+        let status: Status = serde_json::from_str(&test).unwrap();
+        assert!(status.results[0].collection.is_none());
+    }
+
+    #[test]
     fn test_metadata_deserialization() {
         let test = read_to_string("testdata/metadata.json").unwrap();
         let meta: Metadata = serde_json::from_str(&test).unwrap();
         assert!(meta.status == "ok");
-        assert!(meta.maintenance == false);
+        assert!(!meta.maintenance);
         assert!(meta.app.title.unwrap() == "OCCRP Aleph");
         assert!(meta.app.version.unwrap() == "3.15.5");
         assert!(meta.app.ftm_version.unwrap() == "3.5.8");
