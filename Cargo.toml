@@ -12,10 +12,10 @@ license = "GPL-3.0-or-later"
 chrono = "0.4"
 chrono-humanize = "0.2"
 color-eyre = "0.6"
-crossterm = "0.27"
+crossterm = "0.28"
 home = "0.5"
 num-format = "0.4"
-ratatui = "0.26"
+ratatui = "0.28"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -35,7 +35,12 @@ ci = ["github"]
 # The installers to generate for each app
 installers = ["shell", "homebrew"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+]
 # Publish jobs to run in CI
 pr-run-mode = "plan"
 # A GitHub repo to push Homebrew formulas to
@@ -50,10 +55,10 @@ publish = false
 push = true
 tag = true
 pre-release-hook = [
-    "git",
-    "cliff",
-    "-o",
-    "CHANGELOG.md",
-    "--tag",
-    "{{version}}",
+  "git",
+  "cliff",
+  "-o",
+  "CHANGELOG.md",
+  "--tag",
+  "{{version}}",
 ]

@@ -43,7 +43,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
             Constraint::Length(1),
             Constraint::Length(1),
         ])
-        .split(f.size());
+        .split(f.area());
     let title_block = Block::default()
         .borders(Borders::ALL)
         .border_type(ratatui::widgets::BorderType::Rounded);
@@ -177,7 +177,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
             .title("Select profile")
             .borders(Borders::ALL);
 
-        let area = centered_rect(40, 25, f.size());
+        let area = centered_rect(40, 25, f.area());
         f.render_widget(popup_block.clone(), area);
 
         let mut rows = Vec::new();
