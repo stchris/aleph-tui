@@ -1,6 +1,6 @@
 [package]
 name = "aleph-tui"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 repository = "https://github.com/stchris/aleph-tui"
 homepage = "https://github.com/stchris/aleph-tui"

@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Slightly update the UI constraints to make it fit better in small windows
 - Add screenshots to README
 - Cargo update (reqwest, cargo-dist)
+- Release aleph-tui version 0.3.1
 
 ## [0.3.0] - 2024-03-04
 
