@@ -6,10 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### ⚙️ Miscellaneous Tasks
 
-- Support Aleph 4.x status API
 - Slightly update the UI constraints to make it fit better in small windows
 - Add screenshots to README
-- Cargo update (reqwest, cargo-dist, ratatui)
+- Cargo update (reqwest, cargo-dist)
 
 ## [0.3.0] - 2024-03-04
 
