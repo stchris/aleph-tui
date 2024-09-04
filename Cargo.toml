@@ -3,6 +3,7 @@ name = "aleph-tui"
 version = "0.3.1"
 edition = "2021"
 repository = "https://github.com/stchris/aleph-tui"
+homepage = "https://github.com/stchris/aleph-tui"
 description = "A text user interface for Aleph"
 license = "GPL-3.0-or-later"
 
@@ -29,14 +30,19 @@ lto = "thin"
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.12.0"
+cargo-dist-version = "0.22.0"
 # CI backends to support
-ci = ["github"]
+ci = "github"
 # The installers to generate for each app
 installers = ["shell", "homebrew"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
-# Publish jobs to run in CI
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+]
+# Which actions to run on pull requests
 pr-run-mode = "plan"
 # A GitHub repo to push Homebrew formulas to
 tap = "stchris/homebrew-formulae"
@@ -44,6 +50,8 @@ tap = "stchris/homebrew-formulae"
 publish-jobs = ["homebrew"]
 # Whether to install an updater program
 install-updater = false
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
 
 [workspace.metadata.release]
 publish = false
