@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2024-09-04
+
+### ⚙️ Miscellaneous Tasks
+
+- Support Aleph 4.x status API
+- Slightly update the UI constraints to make it fit better in small windows
+- Add screenshots to README
+- Cargo update (reqwest, cargo-dist, ratatui)
+
 ## [0.3.0] - 2024-03-04
 
 ### 🚀 Features
@@ -16,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Cargo-dist 0.10.0
 - Clippy fixes
 - Update changelog
+- Release aleph-tui version 0.3.0
 
 ## [0.1.3] - 2024-01-24
 
