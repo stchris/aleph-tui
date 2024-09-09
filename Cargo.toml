@@ -11,10 +11,10 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 chrono = "0.4"
-chrono-humanize = "0.2"
 color-eyre = "0.6"
 crossterm = "0.28"
 home = "0.5"
+humanize-duration = { version = "0.0", features = ["chrono"] }
 num-format = "0.4"
 ratatui = "0.28"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
