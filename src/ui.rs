@@ -1,5 +1,6 @@
-use chrono::{NaiveDateTime, Utc};
-use chrono_humanize::{Accuracy, HumanTime, Tense};
+use chrono::{Local, NaiveDateTime, Utc};
+use humanize_duration::prelude::DurationExt;
+use humanize_duration::Truncate;
 use num_format::{Locale, ToFormattedString};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -81,8 +82,9 @@ pub fn render(app: &mut App, f: &mut Frame) {
             Some(t) => {
                 let last_update = NaiveDateTime::parse_from_str(&t, "%Y-%m-%dT%H:%M:%S.%f")
                     .expect("Failed to parse last_update timestamp");
-                let last_update = last_update - now;
-                HumanTime::from(last_update).to_text_en(Accuracy::Precise, Tense::Present)
+                let last_update = now - last_update;
+                let last_update = last_update.human(Truncate::Second);
+                last_update.to_string()
             }
             None => "".to_string(),
         };
@@ -154,10 +156,11 @@ pub fn render(app: &mut App, f: &mut Frame) {
         true => "🔄",
         false => "",
     };
+    let last_fetch = Local::now() - app.last_fetch;
+    let last_fetch = last_fetch.human(Truncate::Second);
     let last_fetch_text = format!(
-        "last fetch: {} {}",
-        HumanTime::from(app.last_fetch),
-        fetching_icon
+        "{} fetching every {}s - last fetch {} ago",
+        fetching_icon, app.config.fetch_interval, last_fetch,
     );
     f.render_widget(
         Block::default()
