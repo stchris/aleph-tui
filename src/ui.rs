@@ -1,13 +1,14 @@
 use chrono::{Local, NaiveDateTime, Utc};
 use humanize_duration::prelude::DurationExt;
 use humanize_duration::Truncate;
+use itertools::Itertools;
 use num_format::{Locale, ToFormattedString};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
     style::{Modifier, Style, Stylize},
     text::Line,
-    widgets::{Block, Borders, Paragraph, Row, Table},
+    widgets::{Block, Borders, Padding, Paragraph, Row, Table},
 };
 
 use crate::{app::App, models::StageOrStages};
@@ -41,6 +42,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
         .constraints([
             Constraint::Length(4),
             Constraint::Min(1),
+            Constraint::Length(7),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
@@ -139,15 +141,38 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     f.render_stateful_widget(table, chunks[1], &mut app.collection_tablestate);
 
+    if let Some(index) = app.collection_tablestate.selected() {
+        let result = &app.status.results[index];
+        if let Some(stages) = &result.stages {
+            let body = match stages {
+                StageOrStages::Stage(stage) => stage.to_string(),
+                StageOrStages::Stages(stages) => {
+                    stages.iter().sorted_by_key(|s| &s.stage).join("\n")
+                }
+            };
+            let title = match &result.collection {
+                Some(col) => format!("Collection {} <{}>", col.collection_id, col.label),
+                None => "Details".to_string(),
+            };
+            let info_block = Block::default()
+                .title(title)
+                .padding(Padding::new(1, 1, 1, 1))
+                .borders(Borders::ALL)
+                .border_type(ratatui::widgets::BorderType::Rounded);
+            let info_block = Paragraph::new(body).block(info_block);
+            f.render_widget(info_block, chunks[2]);
+        };
+    }
+
     f.render_widget(
         Paragraph::new(app.error_message.to_string()).style(Style::new().red()),
-        chunks[2],
+        chunks[3],
     );
 
     let status_bar_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Min(1), Constraint::Min(1), Constraint::Min(25)])
-        .split(chunks[3]);
+        .split(chunks[4]);
     f.render_widget(
         Block::default().title(format!("aleph-tui version {}", app.version)),
         status_bar_chunks[0],

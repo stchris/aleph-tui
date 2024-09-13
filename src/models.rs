@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -36,6 +38,16 @@ pub struct Stage {
     pub finished: u32,
     pub running: u32,
     pub pending: u32,
+}
+
+impl Display for Stage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:<10} finished: {:<7} running {:<7} pending {:<7}",
+            self.stage, self.finished, self.running, self.pending
+        )
+    }
 }
 
 #[derive(Clone, Deserialize, Debug)]
