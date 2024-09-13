@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - Update screenshot
+- Update changelog for 0.4.0
 
 ## [0.3.2] - 2024-09-04
 
