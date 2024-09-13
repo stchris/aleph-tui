@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2024-09-13
+
+### 🚀 Features
+
+- Nicer display of time deltas
+- Show status details per collection when browsing results
+
+### ⚙️ Miscellaneous Tasks
+
+- Update screenshot
+
+## [0.3.2] - 2024-09-04
+
+### ⚙️ Miscellaneous Tasks
+
+- Release aleph-tui version 0.3.2
+
 ## [0.3.1] - 2024-09-04
 
 ### ⚙️ Miscellaneous Tasks
