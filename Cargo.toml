@@ -15,6 +15,7 @@ color-eyre = "0.6"
 crossterm = "0.28"
 home = "0.5"
 humanize-duration = { version = "0.0", features = ["chrono"] }
+itertools = "0.13.0"
 num-format = "0.4"
 ratatui = "0.28"
 reqwest = { version = "0.12", features = ["blocking", "json"] }

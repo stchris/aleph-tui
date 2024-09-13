@@ -38,6 +38,7 @@ dependencies = [
  "crossterm",
  "home",
  "humanize-duration",
+ "itertools",
  "num-format",
  "ratatui",
  "reqwest",
