@@ -13,7 +13,9 @@ use color_eyre::Result;
 use event::{Event, EventHandler};
 use ratatui::prelude::{CrosstermBackend, Terminal};
 use tui::Tui;
-fn main() -> Result<()> {
+
+#[tokio::main]
+async fn main() -> Result<()> {
     human_panic::setup_panic!();
     let mut app = App::new();
     let first_arg = std::env::args().nth(1);
@@ -39,6 +41,7 @@ fn main() -> Result<()> {
     };
 
     app.fetch()
+        .await
         .unwrap_or_else(|e| app.error_message = e.to_string());
 
     let backend = CrosstermBackend::new(std::io::stderr());
@@ -50,8 +53,8 @@ fn main() -> Result<()> {
     while !app.should_quit {
         tui.draw(&mut app)?;
         match tui.events.next()? {
-            Event::Tick => update::fetch(&mut app),
-            Event::Key(key_event) => update::update(&mut app, key_event),
+            Event::Tick => update::fetch(&mut app).await,
+            Event::Key(key_event) => update::update(&mut app, key_event).await,
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         };

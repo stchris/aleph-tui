@@ -170,9 +170,9 @@ impl App {
         }
     }
 
-    pub(crate) fn fetch(&mut self) -> color_eyre::Result<()> {
+    pub(crate) async fn fetch(&mut self) -> color_eyre::Result<()> {
         self.is_fetching = true;
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::Client::new();
         let auth_header = format!("Bearer {}", self.current_profile().token);
 
         let url = format!(
@@ -186,9 +186,11 @@ impl App {
                 reqwest::header::USER_AGENT,
                 format!("aleph-tui/{}", self.version),
             )
-            .send()?
+            .send()
+            .await?
             .error_for_status()?
-            .json()?;
+            .json()
+            .await?;
         self.status = status;
 
         let url = format!(
@@ -202,9 +204,11 @@ impl App {
                 reqwest::header::USER_AGENT,
                 format!("aleph-tui/{}", self.version),
             )
-            .send()?
+            .send()
+            .await?
             .error_for_status()?
-            .json()?;
+            .json()
+            .await?;
         self.metadata = metadata;
 
         self.error_message = "".to_string();
