@@ -2,17 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2024-09-13
+## [0.4.1] - 2024-10-24
 
 ### 🚀 Features
 
-- Nicer display of time deltas
 - Show status details per collection when browsing results
+- Integrate human_panic for much nicer panic handling
+- Make it async
 
 ### ⚙️ Miscellaneous Tasks
 
 - Update screenshot
 - Update changelog for 0.4.0
+- Release aleph-tui version 0.4.0
+
+### Bugfix
+
+- Make the info panel slightly larger
 
 ## [0.3.2] - 2024-09-04
 
