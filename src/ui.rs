@@ -42,7 +42,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
         .constraints([
             Constraint::Length(4),
             Constraint::Min(1),
-            Constraint::Length(7),
+            Constraint::Length(9),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
