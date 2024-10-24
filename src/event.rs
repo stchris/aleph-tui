@@ -1,11 +1,8 @@
-use std::{
-    sync::mpsc,
-    thread,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
-use color_eyre::Result;
+use color_eyre::{eyre::eyre, Result};
 use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, MouseEvent};
+use tokio::sync::mpsc;
 
 /// Terminal events.
 #[derive(Clone, Copy, Debug)]
@@ -25,22 +22,22 @@ pub enum Event {
 pub struct EventHandler {
     /// Event sender channel.
     #[allow(dead_code)]
-    sender: mpsc::Sender<Event>,
+    sender: mpsc::UnboundedSender<Event>,
     /// Event receiver channel.
-    receiver: mpsc::Receiver<Event>,
+    receiver: mpsc::UnboundedReceiver<Event>,
     /// Event handler thread.
     #[allow(dead_code)]
-    handler: thread::JoinHandle<()>,
+    handler: tokio::task::JoinHandle<()>,
 }
 
 impl EventHandler {
     /// Constructs a new instance of [`EventHandler`].
     pub fn new(tick_rate: u64) -> Self {
         let tick_rate = Duration::from_millis(tick_rate);
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = mpsc::unbounded_channel();
         let handler = {
             let sender = sender.clone();
-            thread::spawn(move || {
+            tokio::spawn(async move {
                 let mut last_tick = Instant::now();
                 loop {
                     let timeout = tick_rate
@@ -81,7 +78,7 @@ impl EventHandler {
     ///
     /// This function will always block the current thread if
     /// there is no data available and it's possible for more data to be sent.
-    pub fn next(&self) -> Result<Event> {
-        Ok(self.receiver.recv()?)
+    pub async fn next(&mut self) -> Result<Event> {
+        self.receiver.recv().await.ok_or(eyre!("IO error"))
     }
 }

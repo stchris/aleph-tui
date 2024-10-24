@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
                 true
             }
             _ => {
-                app.set_profile(arg)?;
+                app.set_profile(arg).await?;
                 false
             }
         },
@@ -40,9 +40,7 @@ async fn main() -> Result<()> {
         std::process::exit(0);
     };
 
-    app.fetch()
-        .await
-        .unwrap_or_else(|e| app.error_message = e.to_string());
+    app.fetch().await;
 
     let backend = CrosstermBackend::new(std::io::stderr());
     let terminal = Terminal::new(backend)?;
@@ -51,8 +49,8 @@ async fn main() -> Result<()> {
     tui.enter()?;
 
     while !app.should_quit {
-        tui.draw(&mut app)?;
-        match tui.events.next()? {
+        tui.draw(&mut app).await?;
+        match tui.events.next().await? {
             Event::Tick => update::fetch(&mut app).await,
             Event::Key(key_event) => update::update(&mut app, key_event).await,
             Event::Mouse(_) => {}

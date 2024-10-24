@@ -13,12 +13,12 @@ pub async fn update(app: &mut App, key_event: KeyEvent) {
         }
         KeyCode::Char('p') => app.toggle_profile_selector(),
         KeyCode::Up | KeyCode::Char('k') => match app.show_profile_selector() {
-            true => app.profile_up(),
-            false => app.collection_up(),
+            true => app.profile_up().await,
+            false => app.collection_up().await,
         },
         KeyCode::Down | KeyCode::Char('j') => match app.show_profile_selector() {
-            true => app.profile_down(),
-            false => app.collection_down(),
+            true => app.profile_down().await,
+            false => app.collection_down().await,
         },
         KeyCode::Enter => {
             if app.current_view == CurrentView::ProfileSwitcher {
@@ -29,13 +29,12 @@ pub async fn update(app: &mut App, key_event: KeyEvent) {
     };
 }
 
-pub(crate) async fn fetch(app: &mut App) {
+pub(crate) async fn fetch(app: &'static mut App) {
     let elapsed = Local::now() - app.last_fetch;
     if elapsed.num_seconds() > app.config.fetch_interval {
-        app.error_message = match app.fetch().await {
-            Ok(()) => String::default(),
-            Err(e) => e.to_string(),
-        };
-        app.last_fetch = Local::now();
+        tokio::spawn(async move {
+            app.fetch().await;
+            app.last_fetch = Local::now();
+        });
     }
 }

@@ -170,7 +170,7 @@ impl App {
         }
     }
 
-    pub(crate) async fn fetch(&mut self) -> color_eyre::Result<()> {
+    pub(crate) async fn fetch(&mut self) {
         self.is_fetching = true;
         let client = reqwest::Client::new();
         let auth_header = format!("Bearer {}", self.current_profile().token);
@@ -187,10 +187,13 @@ impl App {
                 format!("aleph-tui/{}", self.version),
             )
             .send()
-            .await?
-            .error_for_status()?
+            .await
+            .expect("Failed to fetch status")
+            .error_for_status()
+            .expect("Status request failed")
             .json()
-            .await?;
+            .await
+            .expect("Failed to get status");
         self.status = status;
 
         let url = format!(
@@ -205,15 +208,17 @@ impl App {
                 format!("aleph-tui/{}", self.version),
             )
             .send()
-            .await?
-            .error_for_status()?
+            .await
+            .unwrap()
+            .error_for_status()
+            .expect("Failed to fetch metadata")
             .json()
-            .await?;
+            .await
+            .expect("Failed to deserialize metadata");
         self.metadata = metadata;
 
         self.error_message = "".to_string();
         self.is_fetching = false;
-        Ok(())
     }
 
     pub fn current_profile(&self) -> Profile {
@@ -231,7 +236,7 @@ impl App {
         self.current_view == CurrentView::ProfileSwitcher
     }
 
-    pub fn set_profile(&mut self, profile: String) -> color_eyre::Result<()> {
+    pub async fn set_profile(&mut self, profile: String) -> color_eyre::Result<()> {
         let p = self.config.profiles.iter().find(|p| p.name == profile);
         match p {
             Some(p) => {
@@ -247,7 +252,7 @@ impl App {
         self.should_quit = true;
     }
 
-    pub(crate) fn profile_down(&mut self) {
+    pub(crate) async fn profile_down(&mut self) {
         if self.current_profile().index < self.config.profiles.len()
             && self
                 .config
@@ -260,7 +265,7 @@ impl App {
         }
     }
 
-    pub(crate) fn profile_up(&mut self) {
+    pub(crate) async fn profile_up(&mut self) {
         if self.current_profile().index > 0
             && self
                 .config
@@ -273,14 +278,14 @@ impl App {
         }
     }
 
-    pub(crate) fn collection_up(&mut self) {
+    pub(crate) async fn collection_up(&mut self) {
         let index = self.collection_tablestate.selected().unwrap_or_default();
         if index > 0 {
             self.collection_tablestate.select(Some(index - 1));
         }
     }
 
-    pub(crate) fn collection_down(&mut self) {
+    pub(crate) async fn collection_down(&mut self) {
         let index = self.collection_tablestate.selected().unwrap_or_default();
         if index < self.status.results.len() {
             self.collection_tablestate.select(Some(index + 1));
