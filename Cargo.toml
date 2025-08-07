@@ -12,7 +12,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 chrono = "0.4"
 color-eyre = "0.6"
-crossterm = { version = "0.28", features = ["event-stream"] }
+crossterm = { version = "0.29", features = ["event-stream"] }
 home = "0.5"
 human-panic = "2.0.1"
 humanize-duration = { version = "0.0", features = ["chrono"] }
