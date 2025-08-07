@@ -67,9 +67,9 @@ pub fn render(app: &mut App, f: &mut Frame) {
         }),
         Line::from(
             match (&app.metadata.app.version, &app.metadata.app.ftm_version) {
-                (Some(aleph), Some(ftm)) => format!("version: {}, followthemoney: {}", aleph, ftm),
-                (None, Some(ftm)) => format!("followthemoney: {}", ftm),
-                (Some(aleph), None) => format!("version: {}", aleph),
+                (Some(aleph), Some(ftm)) => format!("version: {aleph}, followthemoney: {ftm}"),
+                (None, Some(ftm)) => format!("followthemoney: {ftm}"),
+                (Some(aleph), None) => format!("version: {aleph}"),
                 (None, None) => String::default(),
             },
         ),
