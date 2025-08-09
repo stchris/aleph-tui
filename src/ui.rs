@@ -136,7 +136,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
             ])
             .bottom_margin(1),
         )
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
 
     f.render_stateful_widget(table, chunks[1], &mut app.collection_tablestate);
@@ -216,7 +216,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
             }
         }
         let profile_table = Table::new(rows, [Constraint::Min(15)])
-            .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+            .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
             .highlight_symbol(">>");
         f.render_stateful_widget(
             profile_table,
