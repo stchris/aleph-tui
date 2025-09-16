@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Bug Fixes
 
+- Handle missing config file gracefully instead of panic
 - *(deps)* Update rust crate human-panic to v2.0.2
 - *(deps)* Update rust crate reqwest to v0.12.9
 - *(deps)* Update rust crate serde to v1.0.215
