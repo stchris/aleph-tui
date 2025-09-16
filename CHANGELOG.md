@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2] - 2025-09-16
+
+### 🐛 Bug Fixes
+
+- *(deps)* Update rust crate human-panic to v2.0.2
+- *(deps)* Update rust crate reqwest to v0.12.9
+- *(deps)* Update rust crate serde to v1.0.215
+- *(deps)* Update rust crate serde_json to v1.0.133
+- *(deps)* Update rust crate tokio to v1.41.1
+- *(deps)* Update rust crate human-panic to v2.0.3
+
+### ⚙️ Miscellaneous Tasks
+
+- Update dependencies
+
 ## [0.4.1] - 2024-10-24
 
 ### 🚀 Features
@@ -10,15 +25,16 @@ All notable changes to this project will be documented in this file.
 - Integrate human_panic for much nicer panic handling
 - Make it async
 
+### 💼 Other
+
+- Make the info panel slightly larger
+
 ### ⚙️ Miscellaneous Tasks
 
 - Update screenshot
 - Update changelog for 0.4.0
 - Release aleph-tui version 0.4.0
-
-### Bugfix
-
-- Make the info panel slightly larger
+- Release aleph-tui version 0.4.1
 
 ## [0.3.2] - 2024-09-04
 
