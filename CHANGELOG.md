@@ -2,11 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3] - 2025-09-16
+
+### ⚙️ Miscellaneous Tasks
+
+- Update cargo-dist to 0.28.0
+- Update cargo-dist to 0.30.0
+
 ## [0.4.2] - 2025-09-16
 
 ### 🐛 Bug Fixes
 
-- Handle missing config file gracefully instead of panic
 - *(deps)* Update rust crate human-panic to v2.0.2
 - *(deps)* Update rust crate reqwest to v0.12.9
 - *(deps)* Update rust crate serde to v1.0.215
@@ -17,6 +23,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - Update dependencies
+- Release aleph-tui version 0.4.2
 
 ## [0.4.1] - 2024-10-24
 
