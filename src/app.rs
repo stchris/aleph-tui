@@ -142,19 +142,24 @@ pub enum CurrentView {
 }
 
 impl App {
-    pub fn new() -> Self {
-        let mut config_path = home::home_dir().expect("Couldn't figure out home dir");
+    pub fn new() -> color_eyre::Result<Self> {
+        let mut config_path = home::home_dir().ok_or_else(|| eyre!("Could not determine home directory"))?;
         config_path.push(".config/aleph-tui.toml");
-        let config = read_to_string(config_path).expect("Unable to read config file");
-        let config: Config = toml::from_str(&config).expect("Unable to parse config file");
+
+        let config = read_to_string(&config_path)
+            .map_err(|e| eyre!("Failed to read config file at {}: {}", config_path.display(), e))?;
+
+        let config: Config = toml::from_str(&config)
+            .map_err(|e| eyre!("Failed to parse config file: {}", e))?;
+
         let current_profile = config
             .profiles
             .iter()
             .find(|p| p.name == config.default)
-            .expect("Unable to find default profile in configuration");
+            .ok_or_else(|| eyre!("Default profile '{}' not found in configuration", config.default))?;
         let last_fetch = Local::now();
 
-        Self {
+        Ok(Self {
             status: Status::default(),
             config: config.clone(),
             current_profile: current_profile.index,
@@ -167,7 +172,7 @@ impl App {
             last_fetch,
             metadata: Metadata::default(),
             is_fetching: false,
-        }
+        })
     }
 
     pub(crate) async fn fetch(&mut self) -> color_eyre::Result<()> {
@@ -311,6 +316,6 @@ impl App {
 
 impl Default for App {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create default App")
     }
 }
