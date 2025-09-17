@@ -2,12 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.4] - 2025-09-17
+
+### ⚙️ Miscellaneous Tasks
+
+- Update actions/download-artifact to v5
+- Add cargo-dist workaround for https://github.com/axodotdev/cargo-dist/issues/1760
+
 ## [0.4.3] - 2025-09-16
 
 ### ⚙️ Miscellaneous Tasks
 
 - Update cargo-dist to 0.28.0
 - Update cargo-dist to 0.30.0
+- Release aleph-tui version 0.4.3
 
 ## [0.4.2] - 2025-09-16
 
