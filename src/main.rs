@@ -11,9 +11,11 @@ use app::App;
 
 use color_eyre::Result;
 use event::{Event, EventHandler};
+use no_panic::no_panic;
 use ratatui::prelude::{CrosstermBackend, Terminal};
 use tui::Tui;
 
+#[no_panic]
 #[tokio::main]
 async fn main() -> Result<()> {
     human_panic::setup_panic!();
