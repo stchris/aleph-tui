@@ -16,7 +16,6 @@ use tui::Tui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    human_panic::setup_panic!();
     let mut app = App::new()?;
     let first_arg = std::env::args().nth(1);
     let quit = match first_arg {
