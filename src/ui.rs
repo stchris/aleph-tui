@@ -6,7 +6,7 @@ use num_format::{Locale, ToFormattedString};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
-    style::{Modifier, Style, Stylize},
+    style::{Modifier, Style},
     text::Line,
     widgets::{Block, Borders, Padding, Paragraph, Row, Table},
 };
