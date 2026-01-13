@@ -8,8 +8,15 @@ use serde::{
     Deserialize,
 };
 use std::fs::read_to_string;
+use tokio::sync::mpsc;
 
-#[derive(Debug)]
+/// Result of a background fetch operation
+pub struct FetchResult {
+    pub status: Status,
+    pub metadata: Metadata,
+    pub error: Option<String>,
+}
+
 pub struct App {
     pub status: Status,
     pub metadata: Metadata,
@@ -23,6 +30,10 @@ pub struct App {
     pub profile_tablestate: TableState,
     pub last_fetch: DateTime<Local>,
     pub is_fetching: bool,
+    /// Channel receiver for background fetch results
+    fetch_result_rx: mpsc::Receiver<FetchResult>,
+    /// Channel sender for background fetch results
+    fetch_result_tx: mpsc::Sender<FetchResult>,
 }
 
 #[derive(Clone, Debug)]
@@ -159,6 +170,9 @@ impl App {
             .ok_or_else(|| eyre!("Default profile '{}' not found in configuration", config.default))?;
         let last_fetch = Local::now();
 
+        // Create channel for background fetch results (buffer size of 1 since we only have one fetch at a time)
+        let (fetch_result_tx, fetch_result_rx) = mpsc::channel(1);
+
         Ok(Self {
             status: Status::default(),
             config: config.clone(),
@@ -172,53 +186,114 @@ impl App {
             last_fetch,
             metadata: Metadata::default(),
             is_fetching: false,
+            fetch_result_rx,
+            fetch_result_tx,
         })
     }
 
-    pub(crate) async fn fetch(&mut self) -> color_eyre::Result<()> {
+    /// Start a background fetch operation. This is non-blocking and returns immediately.
+    /// Call `poll_fetch_result()` to check for and apply results.
+    pub fn start_fetch(&mut self) {
+        if self.is_fetching {
+            return; // Already fetching, don't start another
+        }
         self.is_fetching = true;
+
+        let tx = self.fetch_result_tx.clone();
+        let url = self.config.profiles[self.current_profile].url.clone();
+        let token = self.current_profile().token.clone();
+        let version = self.version.clone();
+
+        tokio::spawn(async move {
+            let result = Self::do_fetch(url, token, version).await;
+            // Ignore send error - receiver may have been dropped if app is shutting down
+            let _ = tx.send(result).await;
+        });
+    }
+
+    /// Perform the actual fetch operation. This runs in a background task.
+    async fn do_fetch(base_url: String, token: String, version: String) -> FetchResult {
         let client = reqwest::Client::new();
-        let auth_header = format!("Bearer {}", self.current_profile().token);
+        let auth_header = format!("Bearer {}", token);
+        let user_agent = format!("aleph-tui/{}", version);
 
-        let url = format!(
-            "{}/api/2/status",
-            self.config.profiles[self.current_profile].url
-        );
-        let status = client
-            .get(url)
-            .header(AUTHORIZATION, auth_header.to_string())
-            .header(
-                reqwest::header::USER_AGENT,
-                format!("aleph-tui/{}", self.version),
-            )
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-        self.status = status;
+        // Fetch status
+        let status_url = format!("{}/api/2/status", base_url);
+        let status_result: Result<Status, reqwest::Error> = async {
+            client
+                .get(&status_url)
+                .header(AUTHORIZATION, &auth_header)
+                .header(reqwest::header::USER_AGENT, &user_agent)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await
+        }
+        .await;
 
-        let url = format!(
-            "{}/api/2/metadata",
-            self.config.profiles[self.current_profile].url
-        );
-        let metadata = client
-            .get(url)
-            .header(AUTHORIZATION, auth_header)
-            .header(
-                reqwest::header::USER_AGENT,
-                format!("aleph-tui/{}", self.version),
-            )
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-        self.metadata = metadata;
+        // Fetch metadata
+        let metadata_url = format!("{}/api/2/metadata", base_url);
+        let metadata_result: Result<Metadata, reqwest::Error> = async {
+            client
+                .get(&metadata_url)
+                .header(AUTHORIZATION, &auth_header)
+                .header(reqwest::header::USER_AGENT, &user_agent)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await
+        }
+        .await;
 
-        self.error_message = "".to_string();
-        self.is_fetching = false;
-        Ok(())
+        match (status_result, metadata_result) {
+            (Ok(status), Ok(metadata)) => FetchResult {
+                status,
+                metadata,
+                error: None,
+            },
+            (Err(e), _) => FetchResult {
+                status: Status::default(),
+                metadata: Metadata::default(),
+                error: Some(e.to_string()),
+            },
+            (_, Err(e)) => FetchResult {
+                status: Status::default(),
+                metadata: Metadata::default(),
+                error: Some(e.to_string()),
+            },
+        }
+    }
+
+    /// Poll for completed fetch results. This is non-blocking.
+    /// If a fetch has completed, applies the results to the app state.
+    pub fn poll_fetch_result(&mut self) {
+        match self.fetch_result_rx.try_recv() {
+            Ok(result) => {
+                self.status = result.status;
+                self.metadata = result.metadata;
+                self.error_message = result.error.unwrap_or_default();
+                self.is_fetching = false;
+                self.last_fetch = Local::now();
+            }
+            Err(mpsc::error::TryRecvError::Empty) => {
+                // No result yet, that's fine
+            }
+            Err(mpsc::error::TryRecvError::Disconnected) => {
+                // Channel closed, shouldn't happen in normal operation
+                self.is_fetching = false;
+            }
+        }
+    }
+
+    /// Check if enough time has elapsed since last fetch and start a new fetch if needed.
+    /// This is non-blocking.
+    pub fn maybe_start_fetch(&mut self) {
+        let elapsed = Local::now() - self.last_fetch;
+        if elapsed.num_seconds() > self.config.fetch_interval && !self.is_fetching {
+            self.start_fetch();
+        }
     }
 
     pub fn current_profile(&self) -> Profile {
