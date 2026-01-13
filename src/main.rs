@@ -39,9 +39,8 @@ async fn main() -> Result<()> {
         std::process::exit(0);
     };
 
-    app.fetch()
-        .await
-        .unwrap_or_else(|e| app.error_message = e.to_string());
+    // Start initial fetch (non-blocking)
+    app.start_fetch();
 
     let backend = CrosstermBackend::new(std::io::stderr());
     let terminal = Terminal::new(backend)?;
@@ -50,10 +49,16 @@ async fn main() -> Result<()> {
     tui.enter()?;
 
     while !app.should_quit {
+        // Poll for completed fetch results (non-blocking)
+        app.poll_fetch_result();
+
         tui.draw(&mut app)?;
         match tui.events.next()? {
-            Event::Tick => update::fetch(&mut app).await,
-            Event::Key(key_event) => update::update(&mut app, key_event).await,
+            Event::Tick => {
+                // Check if we need to start a new fetch (non-blocking)
+                app.maybe_start_fetch();
+            }
+            Event::Key(key_event) => update::update(&mut app, key_event),
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         };

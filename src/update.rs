@@ -1,9 +1,8 @@
-use chrono::Local;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::app::{App, CurrentView};
 
-pub async fn update(app: &mut App, key_event: KeyEvent) {
+pub fn update(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
         KeyCode::Esc | KeyCode::Char('q') => app.quit(),
         KeyCode::Char('c') | KeyCode::Char('C') => {
@@ -27,15 +26,4 @@ pub async fn update(app: &mut App, key_event: KeyEvent) {
         }
         _ => {}
     };
-}
-
-pub(crate) async fn fetch(app: &mut App) {
-    let elapsed = Local::now() - app.last_fetch;
-    if elapsed.num_seconds() > app.config.fetch_interval {
-        app.error_message = match app.fetch().await {
-            Ok(()) => String::default(),
-            Err(e) => e.to_string(),
-        };
-        app.last_fetch = Local::now();
-    }
 }
