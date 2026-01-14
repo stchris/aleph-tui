@@ -86,6 +86,11 @@ impl<'de> Deserialize<'de> for Config {
                             cfg.default =
                                 value.as_str().expect("missing default profile").to_string();
                         }
+                        "fetch_interval" => {
+                            cfg.fetch_interval = value
+                                .as_integer()
+                                .expect("fetch_interval is not an integer");
+                        }
                         "profiles" => {
                             let mut profiles: Vec<Profile> = Vec::new();
                             let table = value.as_table().expect("Profiles is not a table");
@@ -123,9 +128,61 @@ impl<'de> Deserialize<'de> for Config {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
+    // Test helpers
+    pub fn create_test_config() -> Config {
+        Config {
+            default: "test".to_string(),
+            profiles: vec![
+                Profile {
+                    index: 0,
+                    name: "test".to_string(),
+                    url: "http://localhost:8080".to_string(),
+                    token: "test-token".to_string(),
+                },
+                Profile {
+                    index: 1,
+                    name: "prod".to_string(),
+                    url: "http://prod.example.com".to_string(),
+                    token: "prod-token".to_string(),
+                },
+            ],
+            fetch_interval: 5,
+        }
+    }
+
+    pub fn create_test_app() -> App {
+        let config = create_test_config();
+        let (tx, rx) = mpsc::channel(1);
+
+        App {
+            status: Status::default(),
+            metadata: Metadata::default(),
+            config,
+            current_profile: 0,
+            should_quit: false,
+            version: "0.5.0-test".to_string(),
+            error_message: String::default(),
+            collection_tablestate: TableState::default(),
+            current_view: CurrentView::Main,
+            profile_tablestate: TableState::default(),
+            last_fetch: Local::now(),
+            is_fetching: false,
+            fetch_result_rx: rx,
+            fetch_result_tx: tx,
+        }
+    }
+
+    pub fn create_test_app_with_collections() -> App {
+        let mut app = create_test_app();
+        let test = read_to_string("testdata/results.json").unwrap();
+        app.status = serde_json::from_str(&test).unwrap();
+        app
+    }
+
+    // Configuration deserialization tests
     #[test]
     fn test_de_profiles() {
         let raw = r#"
@@ -142,11 +199,476 @@ mod tests {
         "#;
 
         let cfg: Config = toml::from_str(raw).unwrap();
-        assert!(cfg.default == "foo")
+        assert!(cfg.default == "foo");
+        assert_eq!(cfg.profiles.len(), 2);
+        assert_eq!(cfg.profiles[0].name, "one");
+        assert_eq!(cfg.profiles[1].name, "two");
+    }
+
+    #[test]
+    fn test_config_with_multiple_profiles() {
+        let toml_str = r#"
+            default = "prod"
+
+            [profiles]
+                [profiles.dev]
+                url = "http://localhost:8080"
+                token = "dev-token"
+
+                [profiles.prod]
+                url = "https://prod.example.com"
+                token = "prod-token"
+        "#;
+
+        let cfg: Config = toml::from_str(toml_str).expect("Failed to parse config");
+        assert_eq!(cfg.profiles.len(), 2);
+        assert_eq!(cfg.default, "prod");
+        assert_eq!(cfg.profiles[0].name, "dev");
+        assert_eq!(cfg.profiles[0].url, "http://localhost:8080");
+        assert_eq!(cfg.profiles[1].name, "prod");
+        assert_eq!(cfg.profiles[1].url, "https://prod.example.com");
+    }
+
+    #[test]
+    fn test_config_custom_fetch_interval() {
+        let toml_str = r#"
+            default = "test"
+            fetch_interval = 10
+
+            [profiles]
+                [profiles.test]
+                url = "http://test"
+                token = "token"
+        "#;
+
+        let cfg: Config = toml::from_str(toml_str).expect("Failed to parse config");
+        assert_eq!(cfg.fetch_interval, 10);
+    }
+
+    #[test]
+    fn test_config_default_fetch_interval() {
+        let toml_str = r#"
+            default = "test"
+
+            [profiles]
+                [profiles.test]
+                url = "http://test"
+                token = "token"
+        "#;
+
+        let cfg: Config = toml::from_str(toml_str).expect("Failed to parse config");
+        assert_eq!(cfg.fetch_interval, 5); // Default value
+    }
+
+    // Navigation tests
+    #[test]
+    fn test_collection_down_increments_selection() {
+        let mut app = create_test_app_with_collections();
+        app.collection_tablestate.select(Some(0));
+        app.collection_down();
+        assert_eq!(app.collection_tablestate.selected(), Some(1));
+    }
+
+    #[test]
+    fn test_collection_down_at_boundary() {
+        let mut app = create_test_app_with_collections();
+        let max_index = app.status.results.len();
+        app.collection_tablestate.select(Some(max_index));
+        app.collection_down();
+        // Should not go beyond the list
+        assert_eq!(app.collection_tablestate.selected(), Some(max_index));
+    }
+
+    #[test]
+    fn test_collection_up_decrements_selection() {
+        let mut app = create_test_app_with_collections();
+        app.collection_tablestate.select(Some(2));
+        app.collection_up();
+        assert_eq!(app.collection_tablestate.selected(), Some(1));
+    }
+
+    #[test]
+    fn test_collection_up_at_zero() {
+        let mut app = create_test_app_with_collections();
+        app.collection_tablestate.select(Some(0));
+        app.collection_up();
+        // Should not go below 0
+        assert_eq!(app.collection_tablestate.selected(), Some(0));
+    }
+
+    #[test]
+    fn test_profile_down_switches_profile() {
+        let mut app = create_test_app();
+        assert_eq!(app.current_profile, 0);
+        app.profile_down();
+        assert_eq!(app.current_profile, 1);
+    }
+
+    #[test]
+    fn test_profile_down_clears_state() {
+        let mut app = create_test_app_with_collections();
+        app.error_message = "Some error".to_string();
+
+        app.profile_down();
+
+        // Verify status and metadata are cleared
+        assert_eq!(app.status.results.len(), 0);
+        assert_eq!(app.error_message, "");
+    }
+
+    #[test]
+    fn test_profile_up_switches_profile() {
+        let mut app = create_test_app();
+        app.current_profile = 1;
+        app.profile_up();
+        assert_eq!(app.current_profile, 0);
+    }
+
+    #[test]
+    fn test_profile_up_at_zero() {
+        let mut app = create_test_app();
+        assert_eq!(app.current_profile, 0);
+        app.profile_up();
+        // Should not go below 0
+        assert_eq!(app.current_profile, 0);
+    }
+
+    #[test]
+    fn test_set_profile_by_name() {
+        let mut app = create_test_app();
+        app.set_profile("prod".to_string())
+            .expect("Failed to set profile");
+        assert_eq!(app.current_profile().name, "prod");
+        assert_eq!(app.current_profile, 1);
+    }
+
+    #[test]
+    fn test_set_profile_nonexistent() {
+        let mut app = create_test_app();
+        let result = app.set_profile("nonexistent".to_string());
+        assert!(result.is_err());
+    }
+
+    // Profile selector tests
+    #[test]
+    fn test_toggle_profile_selector() {
+        let mut app = create_test_app();
+        assert_eq!(app.current_view, CurrentView::Main);
+
+        app.toggle_profile_selector();
+        assert_eq!(app.current_view, CurrentView::ProfileSwitcher);
+
+        app.toggle_profile_selector();
+        assert_eq!(app.current_view, CurrentView::Main);
+    }
+
+    #[test]
+    fn test_show_profile_selector() {
+        let mut app = create_test_app();
+        assert!(!app.show_profile_selector());
+
+        app.toggle_profile_selector();
+        assert!(app.show_profile_selector());
+    }
+
+    // Quit test
+    #[test]
+    fn test_quit() {
+        let mut app = create_test_app();
+        assert!(!app.should_quit);
+        app.quit();
+        assert!(app.should_quit);
+    }
+
+    // Fetch result polling tests
+    #[test]
+    fn test_poll_fetch_result_empty_channel() {
+        let mut app = create_test_app();
+        app.is_fetching = true;
+        app.poll_fetch_result();
+        // Should still be fetching since no result arrived
+        assert!(app.is_fetching);
+    }
+
+    #[tokio::test]
+    async fn test_poll_fetch_result_with_success() {
+        let mut app = create_test_app();
+        app.is_fetching = true;
+
+        // Send a successful fetch result
+        let result = FetchResult {
+            status: Status::default(),
+            metadata: Metadata::default(),
+            error: None,
+        };
+
+        app.fetch_result_tx
+            .send(result)
+            .await
+            .expect("Failed to send result");
+
+        // Poll should receive it
+        app.poll_fetch_result();
+        assert!(!app.is_fetching);
+        assert_eq!(app.error_message, "");
+    }
+
+    #[tokio::test]
+    async fn test_poll_fetch_result_with_error() {
+        let mut app = create_test_app();
+        app.is_fetching = true;
+
+        // Send an error result
+        let result = FetchResult {
+            status: Status::default(),
+            metadata: Metadata::default(),
+            error: Some("Network error".to_string()),
+        };
+
+        app.fetch_result_tx
+            .send(result)
+            .await
+            .expect("Failed to send result");
+
+        // Poll should receive it
+        app.poll_fetch_result();
+        assert!(!app.is_fetching);
+        assert_eq!(app.error_message, "Network error");
+    }
+
+    #[test]
+    fn test_start_fetch_when_already_fetching() {
+        let mut app = create_test_app();
+        app.is_fetching = true;
+
+        app.start_fetch();
+
+        // Should remain in fetching state without starting new fetch
+        assert!(app.is_fetching);
+    }
+
+    #[test]
+    fn test_current_profile() {
+        let app = create_test_app();
+        let profile = app.current_profile();
+        assert_eq!(profile.name, "test");
+        assert_eq!(profile.url, "http://localhost:8080");
+    }
+
+    // API client tests with wiremock
+    use wiremock::{
+        matchers::{header, method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
+
+    #[tokio::test]
+    async fn test_successful_fetch() {
+        let mock_server = MockServer::start().await;
+
+        // Mock the status endpoint
+        Mock::given(method("GET"))
+            .and(path("/api/2/status"))
+            .and(header("authorization", "Bearer test-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [],
+                "total": 0
+            })))
+            .mount(&mock_server)
+            .await;
+
+        // Mock the metadata endpoint
+        Mock::given(method("GET"))
+            .and(path("/api/2/metadata"))
+            .and(header("authorization", "Bearer test-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "status": "ok",
+                "maintenance": false,
+                "app": {
+                    "title": "Test Aleph",
+                    "version": "1.0.0",
+                    "ftm_version": "4.0.0"
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let result = App::do_fetch(
+            mock_server.uri(),
+            "test-token".to_string(),
+            "0.5.0-test".to_string(),
+        )
+        .await;
+
+        assert!(result.error.is_none());
+        assert_eq!(result.status.total, 0);
+        assert_eq!(result.metadata.status, "ok");
+    }
+
+    #[tokio::test]
+    async fn test_fetch_with_invalid_auth() {
+        let mock_server = MockServer::start().await;
+
+        // Mock unauthorized response
+        Mock::given(method("GET"))
+            .and(path("/api/2/status"))
+            .respond_with(ResponseTemplate::new(401))
+            .mount(&mock_server)
+            .await;
+
+        let result = App::do_fetch(
+            mock_server.uri(),
+            "invalid-token".to_string(),
+            "0.5.0-test".to_string(),
+        )
+        .await;
+
+        assert!(result.error.is_some());
+        assert!(result.error.unwrap().contains("401"));
+    }
+
+    #[tokio::test]
+    async fn test_fetch_with_network_error() {
+        // Use an invalid URL that will cause a connection error
+        let result = App::do_fetch(
+            "http://invalid-host-that-does-not-exist-12345:9999".to_string(),
+            "test-token".to_string(),
+            "0.5.0-test".to_string(),
+        )
+        .await;
+
+        assert!(result.error.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_with_malformed_json() {
+        let mock_server = MockServer::start().await;
+
+        // Mock response with invalid JSON
+        Mock::given(method("GET"))
+            .and(path("/api/2/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("{invalid json"))
+            .mount(&mock_server)
+            .await;
+
+        let result = App::do_fetch(
+            mock_server.uri(),
+            "test-token".to_string(),
+            "0.5.0-test".to_string(),
+        )
+        .await;
+
+        assert!(result.error.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_with_metadata_error() {
+        let mock_server = MockServer::start().await;
+
+        // Status endpoint succeeds
+        Mock::given(method("GET"))
+            .and(path("/api/2/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [],
+                "total": 0
+            })))
+            .mount(&mock_server)
+            .await;
+
+        // Metadata endpoint fails
+        Mock::given(method("GET"))
+            .and(path("/api/2/metadata"))
+            .respond_with(ResponseTemplate::new(500))
+            .mount(&mock_server)
+            .await;
+
+        let result = App::do_fetch(
+            mock_server.uri(),
+            "test-token".to_string(),
+            "0.5.0-test".to_string(),
+        )
+        .await;
+
+        assert!(result.error.is_some());
+        assert!(result.error.unwrap().contains("500"));
+    }
+
+    #[tokio::test]
+    async fn test_fetch_includes_user_agent() {
+        let mock_server = MockServer::start().await;
+
+        // Verify user agent header is sent
+        Mock::given(method("GET"))
+            .and(path("/api/2/status"))
+            .and(header("user-agent", "aleph-tui/0.5.0-test"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [],
+                "total": 0
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path("/api/2/metadata"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "status": "ok",
+                "maintenance": false,
+                "app": {}
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let result = App::do_fetch(
+            mock_server.uri(),
+            "test-token".to_string(),
+            "0.5.0-test".to_string(),
+        )
+        .await;
+
+        assert!(result.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_maybe_start_fetch_when_interval_elapsed() {
+        let mut app = create_test_app();
+        app.config.fetch_interval = 1; // 1 second
+        app.last_fetch = Local::now() - chrono::Duration::seconds(2);
+        app.is_fetching = false;
+
+        app.maybe_start_fetch();
+
+        // Should have started a fetch
+        assert!(app.is_fetching);
+    }
+
+    #[tokio::test]
+    async fn test_maybe_start_fetch_when_interval_not_elapsed() {
+        let mut app = create_test_app();
+        app.config.fetch_interval = 10; // 10 seconds
+        app.last_fetch = Local::now(); // Just now
+        app.is_fetching = false;
+
+        app.maybe_start_fetch();
+
+        // Should not have started a fetch
+        assert!(!app.is_fetching);
+    }
+
+    #[tokio::test]
+    async fn test_maybe_start_fetch_when_already_fetching() {
+        let mut app = create_test_app();
+        app.config.fetch_interval = 1;
+        app.last_fetch = Local::now() - chrono::Duration::seconds(2);
+        app.is_fetching = true;
+
+        app.maybe_start_fetch();
+
+        // Should still be fetching (no new fetch started)
+        assert!(app.is_fetching);
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CurrentView {
     Main,
     ProfileSwitcher,
@@ -154,20 +676,31 @@ pub enum CurrentView {
 
 impl App {
     pub fn new() -> color_eyre::Result<Self> {
-        let mut config_path = home::home_dir().ok_or_else(|| eyre!("Could not determine home directory"))?;
+        let mut config_path =
+            home::home_dir().ok_or_else(|| eyre!("Could not determine home directory"))?;
         config_path.push(".config/aleph-tui.toml");
 
-        let config = read_to_string(&config_path)
-            .map_err(|e| eyre!("Failed to read config file at {}: {}", config_path.display(), e))?;
+        let config = read_to_string(&config_path).map_err(|e| {
+            eyre!(
+                "Failed to read config file at {}: {}",
+                config_path.display(),
+                e
+            )
+        })?;
 
-        let config: Config = toml::from_str(&config)
-            .map_err(|e| eyre!("Failed to parse config file: {}", e))?;
+        let config: Config =
+            toml::from_str(&config).map_err(|e| eyre!("Failed to parse config file: {}", e))?;
 
         let current_profile = config
             .profiles
             .iter()
             .find(|p| p.name == config.default)
-            .ok_or_else(|| eyre!("Default profile '{}' not found in configuration", config.default))?;
+            .ok_or_else(|| {
+                eyre!(
+                    "Default profile '{}' not found in configuration",
+                    config.default
+                )
+            })?;
         let last_fetch = Local::now();
 
         // Create channel for background fetch results (buffer size of 1 since we only have one fetch at a time)
