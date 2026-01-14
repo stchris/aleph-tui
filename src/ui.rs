@@ -3,7 +3,7 @@ use humanize_duration::prelude::DurationExt;
 use humanize_duration::Truncate;
 use num_format::{Locale, ToFormattedString};
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Flex, Layout, Rect},
     prelude::Frame,
     style::{Modifier, Style},
     text::Line,
@@ -36,15 +36,14 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 pub fn render(app: &mut App, f: &mut Frame) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
+    let chunks = Layout::vertical([
             Constraint::Length(4),
             Constraint::Min(1),
-            Constraint::Length(9),
+            Constraint::Min(0),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
+        .flex(Flex::Start)
         .split(f.area());
     let title_block = Block::default()
         .borders(Borders::ALL)
@@ -127,19 +126,23 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     if let Some(index) = app.collection_tablestate.selected() {
         let result = &app.status.results[index];
-        let mut tasks = vec![];
+        let mut task_rows = vec![];
         for batch in result.batches.clone() {
             for queue in batch.queues {
                 for task in queue.tasks {
-                    let task = format!(
-                        "{} (Total: {}, Active: {}, Finished: {}, Todo: {}, Doing: {}, Succeeded: {}, Failed: {})",
-                        task.name, task.total, task.active, task.finished, task.todo, task.doing, task.succeeded, task.failed
-                    );
-                    tasks.push(task);
+                    task_rows.push(Row::new(vec![
+                        task.name.clone(),
+                        task.total.to_formatted_string(&Locale::en),
+                        task.active.to_formatted_string(&Locale::en),
+                        task.finished.to_formatted_string(&Locale::en),
+                        task.todo.to_formatted_string(&Locale::en),
+                        task.doing.to_formatted_string(&Locale::en),
+                        task.succeeded.to_formatted_string(&Locale::en),
+                        task.failed.to_formatted_string(&Locale::en),
+                    ]));
                 }
             }
         }
-        let body = tasks.join("\n");
         let title = match &result.collection {
             Some(col) => format!("Collection {} <{}>", col.collection_id, col.label),
             None => "Details".to_string(),
@@ -149,8 +152,32 @@ pub fn render(app: &mut App, f: &mut Frame) {
             .padding(Padding::new(1, 1, 1, 1))
             .borders(Borders::ALL)
             .border_type(ratatui::widgets::BorderType::Rounded);
-        let info_block = Paragraph::new(body).block(info_block);
-        f.render_widget(info_block, chunks[2]);
+        let task_widths = [
+            Constraint::Min(15),
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(10),
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(10),
+            Constraint::Length(8),
+        ];
+        let task_table = Table::new(task_rows, task_widths)
+            .header(
+                Row::new(vec![
+                    "Task Name",
+                    "Total",
+                    "Active",
+                    "Finished",
+                    "Todo",
+                    "Doing",
+                    "Succeeded",
+                    "Failed",
+                ])
+                .bottom_margin(1),
+            )
+            .block(info_block);
+        f.render_widget(task_table, chunks[2]);
     }
 
     f.render_widget(
