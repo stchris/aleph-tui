@@ -35,6 +35,7 @@ dependencies = [
  "crossterm",
  "home",
  "humanize-duration",
+ "iso8601-duration",
  "itertools 0.14.0",
  "num-format",
  "ratatui",
@@ -1050,6 +1051,15 @@ checksum = "dbc5ebe9c3a1a7a5127f920a418f7585e9e758e911d0466ed004f393b0e380b2"
 dependencies = [
  "memchr",
  "serde",
+]
+
+[[package]]
+name = "iso8601-duration"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a26adff60a5d3ca10dc271ad37a34ff376595d2a1e5f21d02564929ca888c511"
+dependencies = [
+ "nom",
 ]
 
 [[package]]

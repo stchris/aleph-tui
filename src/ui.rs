@@ -1,7 +1,6 @@
 use chrono::{Local, NaiveDateTime, Utc};
 use humanize_duration::prelude::DurationExt;
 use humanize_duration::Truncate;
-use itertools::Itertools;
 use num_format::{Locale, ToFormattedString};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -11,7 +10,7 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph, Row, Table},
 };
 
-use crate::{app::App, models::StageOrStages};
+use crate::app::App;
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
@@ -80,10 +79,10 @@ pub fn render(app: &mut App, f: &mut Frame) {
     let mut rows = Vec::new();
     let now = Utc::now().naive_utc();
     for result in &app.status.results {
-        let last_update = match result.last_update.clone() {
+        let last_update = match result.max_ts.clone() {
             Some(t) => {
-                let last_update = NaiveDateTime::parse_from_str(&t, "%Y-%m-%dT%H:%M:%S.%f")
-                    .expect("Failed to parse last_update timestamp");
+                let last_update =
+                    NaiveDateTime::parse_from_str(&t, "%Y-%m-%dT%H:%M:%S%.f").unwrap_or_default();
                 let last_update = now - last_update;
                 let last_update = last_update.human(Truncate::Second);
                 last_update.to_string()
@@ -97,22 +96,14 @@ pub fn render(app: &mut App, f: &mut Frame) {
         };
         let collection_label = match &result.collection {
             Some(c) => c.label.to_string(),
-            None => match result.stages.clone() {
-                Some(s) => match s {
-                    StageOrStages::Stage(s) => s.stage,
-                    StageOrStages::Stages(v) => {
-                        v.iter().map(|s| s.stage.to_string() + ", ").collect()
-                    }
-                },
-                None => "".to_string(),
-            },
+            None => result.name.clone(),
         };
         rows.push(Row::new(vec![
             collection_id,
             collection_label,
             result.finished.to_formatted_string(&Locale::en),
-            result.running.to_formatted_string(&Locale::en),
-            result.pending.to_formatted_string(&Locale::en),
+            result.doing.to_formatted_string(&Locale::en),
+            result.todo.to_formatted_string(&Locale::en),
             last_update,
         ]))
     }
@@ -143,25 +134,28 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     if let Some(index) = app.collection_tablestate.selected() {
         let result = &app.status.results[index];
-        if let Some(stages) = &result.stages {
-            let body = match stages {
-                StageOrStages::Stage(stage) => stage.to_string(),
-                StageOrStages::Stages(stages) => {
-                    stages.iter().sorted_by_key(|s| &s.stage).join("\n")
-                }
-            };
-            let title = match &result.collection {
-                Some(col) => format!("Collection {} <{}>", col.collection_id, col.label),
-                None => "Details".to_string(),
-            };
-            let info_block = Block::default()
-                .title(title)
-                .padding(Padding::new(1, 1, 1, 1))
-                .borders(Borders::ALL)
-                .border_type(ratatui::widgets::BorderType::Rounded);
-            let info_block = Paragraph::new(body).block(info_block);
-            f.render_widget(info_block, chunks[2]);
+        let body = format!(
+            "Name: {}\nTotal: {}\nActive: {}\nFinished: {}\nTodo: {}\nDoing: {}\nSucceeded: {}\nFailed: {}",
+            result.name,
+            result.total,
+            result.active,
+            result.finished,
+            result.todo,
+            result.doing,
+            result.succeeded,
+            result.failed
+        );
+        let title = match &result.collection {
+            Some(col) => format!("Collection {} <{}>", col.collection_id, col.label),
+            None => "Details".to_string(),
         };
+        let info_block = Block::default()
+            .title(title)
+            .padding(Padding::new(1, 1, 1, 1))
+            .borders(Borders::ALL)
+            .border_type(ratatui::widgets::BorderType::Rounded);
+        let info_block = Paragraph::new(body).block(info_block);
+        f.render_widget(info_block, chunks[2]);
     }
 
     f.render_widget(

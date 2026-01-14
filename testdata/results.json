@@ -1,67 +1,177 @@
 {
-    "results": [
-        {
-            "finished": 1846,
-            "running": 33,
-            "pending": 0,
-            "start_time": "2024-01-10T13:40:04.516210",
-            "end_time": "2024-01-10T13:40:04.001613",
-            "last_update": "2024-01-10T13:40:04.516229",
-            "collection": {
-                "created_at": "2024-01-04T13:56:09.023024",
-                "updated_at": "2024-01-04T13:56:09.558725",
-                "category": "casefile",
-                "frequency": "unknown",
-                "collection_id": "94",
-                "foreign_id": "7c2e08e6bfce4f8a8765cc54303851c4",
-                "data_updated_at": "2024-01-10T13:39:51.126327",
-                "label": "[test] Chris 2024",
-                "casefile": true,
-                "secret": true,
-                "xref": false,
-                "restricted": false,
-                "id": "94",
-                "writeable": true,
-                "links": {
-                    "self": "http://localhost:8080/api/2/collections/94",
-                    "xref_export": "http://localhost:8080/api/2/collections/94/xref.xlsx?_authz=%3CAuthz(1)%3E",
-                    "reconcile": "http://localhost:8080/api/2/collections/94/reconcile",
-                    "ui": "http://localhost:8080/datasets/94"
-                },
-                "shallow": true
-            }
-        },
-        {
-            "finished": 468925,
-            "running": 343,
-            "pending": 829385,
-            "start_time": "2024-01-10T13:40:04.516210",
-            "end_time": "2024-01-10T13:40:04.001613",
-            "last_update": "2024-01-10T13:40:04.516229",
-            "collection": {
-                "created_at": "2024-01-04T13:56:09.023024",
-                "updated_at": "2024-01-04T13:56:09.558725",
-                "category": "casefile",
-                "frequency": "unknown",
-                "collection_id": "94",
-                "foreign_id": "7c2e08e6bfce4f8a8765cc54303851c4",
-                "data_updated_at": "2024-01-10T13:39:51.126327",
-                "label": "very large dataset long label much data",
-                "casefile": true,
-                "secret": true,
-                "xref": false,
-                "restricted": false,
-                "id": "8194",
-                "writeable": true,
-                "links": {
-                    "self": "http://localhost:8080/api/2/collections/94",
-                    "xref_export": "http://localhost:8080/api/2/collections/94/xref.xlsx?_authz=%3CAuthz(1)%3E",
-                    "reconcile": "http://localhost:8080/api/2/collections/94/reconcile",
-                    "ui": "http://localhost:8080/datasets/94"
-                },
-                "shallow": true
-            }
-        }
-    ],
-    "total": 1
+	"results": [
+		{
+			"todo": 6,
+			"doing": 2,
+			"succeeded": 2,
+			"failed": 15,
+			"aborted": 0,
+			"aborting": 0,
+			"cancelled": 0,
+			"min_ts": "2026-01-13T22:49:04.662300Z",
+			"max_ts": "2026-01-13T22:52:45.168337Z",
+			"name": "collection_1",
+			"batches": [
+				{
+					"todo": 6,
+					"doing": 2,
+					"succeeded": 2,
+					"failed": 15,
+					"aborted": 0,
+					"aborting": 0,
+					"cancelled": 0,
+					"min_ts": "2026-01-13T22:49:04.662300Z",
+					"max_ts": "2026-01-13T22:52:45.168337Z",
+					"name": "4:cfab4858-fe55-4412-bc8a-18bee2087522",
+					"queues": [
+						{
+							"todo": 0,
+							"doing": 1,
+							"succeeded": 0,
+							"failed": 0,
+							"aborted": 0,
+							"aborting": 0,
+							"cancelled": 0,
+							"min_ts": "2026-01-13T22:52:44.204291Z",
+							"max_ts": "2026-01-13T22:52:44.219918Z",
+							"name": "analyze",
+							"tasks": [
+								{
+									"todo": 0,
+									"doing": 1,
+									"succeeded": 0,
+									"failed": 0,
+									"aborted": 0,
+									"aborting": 0,
+									"cancelled": 0,
+									"min_ts": "2026-01-13T22:52:44.204291Z",
+									"max_ts": "2026-01-13T22:52:44.219918Z",
+									"name": "ftm_analyze.tasks.analyze",
+									"remaining_time": null,
+									"took": "PT1.495709S",
+									"total": 1,
+									"active": 1,
+									"finished": 0
+								}
+							],
+							"remaining_time": null,
+							"took": "PT1.495738S",
+							"total": 1,
+							"active": 1,
+							"finished": 0
+						},
+						{
+							"todo": 6,
+							"doing": 1,
+							"succeeded": 1,
+							"failed": 15,
+							"aborted": 0,
+							"aborting": 0,
+							"cancelled": 0,
+							"min_ts": "2026-01-13T22:49:04.662300Z",
+							"max_ts": "2026-01-13T22:52:44.386454Z",
+							"name": "ingest",
+							"tasks": [
+								{
+									"todo": 6,
+									"doing": 1,
+									"succeeded": 1,
+									"failed": 15,
+									"aborted": 0,
+									"aborting": 0,
+									"cancelled": 0,
+									"min_ts": "2026-01-13T22:49:04.662300Z",
+									"max_ts": "2026-01-13T22:52:44.386454Z",
+									"name": "ingestors.tasks.ingest",
+									"remaining_time": "PT1M22.125S",
+									"took": "PT3M39.724154S",
+									"total": 23,
+									"active": 7,
+									"finished": 16
+								}
+							],
+							"remaining_time": "PT1M22.125S",
+							"took": "PT3M39.724154S",
+							"total": 23,
+							"active": 7,
+							"finished": 16
+						},
+						{
+							"todo": 0,
+							"doing": 0,
+							"succeeded": 1,
+							"failed": 0,
+							"aborted": 0,
+							"aborting": 0,
+							"cancelled": 0,
+							"min_ts": "2026-01-13T22:52:44.209881Z",
+							"max_ts": "2026-01-13T22:52:45.168337Z",
+							"name": "openaleph",
+							"tasks": [
+								{
+									"todo": 0,
+									"doing": 0,
+									"succeeded": 1,
+									"failed": 0,
+									"aborted": 0,
+									"aborting": 0,
+									"cancelled": 0,
+									"min_ts": "2026-01-13T22:52:44.209881Z",
+									"max_ts": "2026-01-13T22:52:45.168337Z",
+									"name": "aleph.procrastinate.tasks.index_entities",
+									"remaining_time": "PT0S",
+									"took": "PT0.958456S",
+									"total": 1,
+									"active": 0,
+									"finished": 1
+								}
+							],
+							"remaining_time": "PT0S",
+							"took": "PT0.958456S",
+							"total": 1,
+							"active": 0,
+							"finished": 1
+						}
+					],
+					"remaining_time": "PT1M17.647059S",
+					"took": "PT3M40.506037S",
+					"total": 25,
+					"active": 8,
+					"finished": 17
+				}
+			],
+			"collection": {
+				"created_at": "2026-01-13T22:48:18.414784",
+				"updated_at": "2026-01-13T22:48:18.983032",
+				"category": "casefile",
+				"frequency": "unknown",
+				"name": "a507b8a3ae424a64aefebb295211b4cf",
+				"collection_id": "1",
+				"foreign_id": "a507b8a3ae424a64aefebb295211b4cf",
+				"data_updated_at": "2026-01-13T22:52:38.431089",
+				"label": "dumpster",
+				"casefile": true,
+				"secret": true,
+				"xref": false,
+				"restricted": false,
+				"contains_ai": false,
+				"taggable": false,
+				"id": "1",
+				"writeable": true,
+				"links": {
+					"self": "http://localhost:8080/api/2/collections/1",
+					"xref_export": "http://localhost:8080/api/2/collections/1/xref.xlsx?_authz=%3CAuthz(4)%3E",
+					"reconcile": "http://localhost:8080/api/2/collections/1/reconcile",
+					"ui": "http://localhost:8080/datasets/1"
+				},
+				"shallow": true
+			},
+			"remaining_time": "PT1M17.647059S",
+			"took": "PT3M40.506037S",
+			"total": 25,
+			"active": 8,
+			"finished": 17
+		}
+	],
+	"total": 1
 }
