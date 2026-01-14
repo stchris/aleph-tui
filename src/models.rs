@@ -355,14 +355,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_deserialization_no_collection() {
-        let test: String = read_to_string("testdata/export.json").unwrap();
-        let status: Status = serde_json::from_str(&test).unwrap();
-        assert!(status.results[0].collection.is_none());
-    }
-
-    #[test]
     fn test_metadata_deserialization() {
         let test = read_to_string("testdata/metadata.json").unwrap();
         let meta: Metadata = serde_json::from_str(&test).unwrap();
