@@ -1,4 +1,4 @@
-use chrono::{Local, NaiveDateTime, Utc};
+use chrono::Local;
 use humanize_duration::prelude::DurationExt;
 use humanize_duration::Truncate;
 use num_format::{Locale, ToFormattedString};
@@ -77,17 +77,10 @@ pub fn render(app: &mut App, f: &mut Frame) {
     f.render_widget(title, chunks[0]);
 
     let mut rows = Vec::new();
-    let now = Utc::now().naive_utc();
     for result in &app.status.results {
-        let last_update = match result.max_ts.clone() {
-            Some(t) => {
-                let last_update =
-                    NaiveDateTime::parse_from_str(&t, "%Y-%m-%dT%H:%M:%S%.f").unwrap_or_default();
-                let last_update = now - last_update;
-                let last_update = last_update.human(Truncate::Second);
-                last_update.to_string()
-            }
-            None => "".to_string(),
+        let remaining = match result.remaining_time {
+            Some(t) => format!("{}", t.human(Truncate::Second)),
+            None => "not sure. soon?".to_string(),
         };
 
         let collection_id = match &result.collection {
@@ -104,7 +97,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
             result.finished.to_formatted_string(&Locale::en),
             result.doing.to_formatted_string(&Locale::en),
             result.todo.to_formatted_string(&Locale::en),
-            last_update,
+            remaining,
         ]))
     }
     let widths = [
@@ -123,7 +116,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
                 "Finished",
                 "Running",
                 "Pending",
-                "Last update",
+                "Remaining",
             ])
             .bottom_margin(1),
         )
