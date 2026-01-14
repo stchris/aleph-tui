@@ -14,8 +14,9 @@ mod duration_serde {
         match s {
             None => Ok(None),
             Some(s) => {
-                let duration = iso8601_duration::Duration::parse(&s)
-                    .map_err(|e| serde::de::Error::custom(format!("Failed to parse duration: {:?}", e)))?;
+                let duration = iso8601_duration::Duration::parse(&s).map_err(|e| {
+                    serde::de::Error::custom(format!("Failed to parse duration: {:?}", e))
+                })?;
 
                 // Convert ISO8601 Duration to chrono::Duration
                 let mut total_seconds = 0i64;
@@ -35,7 +36,7 @@ mod duration_serde {
                 total_seconds += seconds_floor;
 
                 Ok(Some(
-                    Duration::seconds(total_seconds) + Duration::nanoseconds(nanos)
+                    Duration::seconds(total_seconds) + Duration::nanoseconds(nanos),
                 ))
             }
         }
@@ -280,7 +281,10 @@ mod tests {
         assert_eq!(analyze_queue.tasks.len(), 1);
         assert_eq!(analyze_queue.tasks[0].name, "ftm_analyze.tasks.analyze");
         assert!(analyze_queue.tasks[0].took.is_some());
-        assert_eq!(analyze_queue.tasks[0].took.as_ref().unwrap().num_seconds(), 1);
+        assert_eq!(
+            analyze_queue.tasks[0].took.as_ref().unwrap().num_seconds(),
+            1
+        );
 
         // Test second queue (ingest)
         let ingest_queue = &batch.queues[1];
@@ -294,7 +298,11 @@ mod tests {
         assert_eq!(ingest_queue.tasks[0].name, "ingestors.tasks.ingest");
         assert!(ingest_queue.tasks[0].remaining_time.is_some());
         assert_eq!(
-            ingest_queue.tasks[0].remaining_time.as_ref().unwrap().num_seconds(),
+            ingest_queue.tasks[0]
+                .remaining_time
+                .as_ref()
+                .unwrap()
+                .num_seconds(),
             82 // 1 minute 22 seconds
         );
 
@@ -363,5 +371,133 @@ mod tests {
         assert!(meta.app.title.unwrap() == "OpenAleph");
         assert!(meta.app.version.unwrap() == "5.1.0-rc9");
         assert!(meta.app.ftm_version.unwrap() == "4.3.3");
+    }
+
+    // Duration parsing tests
+    #[derive(Deserialize)]
+    struct DurationWrapper {
+        #[serde(deserialize_with = "super::duration_serde::deserialize")]
+        duration: Option<Duration>,
+    }
+
+    #[test]
+    fn test_parse_seconds_only() {
+        let json = r#"{"duration": "PT30S"}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        assert_eq!(wrapper.duration.unwrap().num_seconds(), 30);
+    }
+
+    #[test]
+    fn test_parse_minutes_and_seconds() {
+        let json = r#"{"duration": "PT5M30S"}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        assert_eq!(wrapper.duration.unwrap().num_seconds(), 330); // 5*60 + 30
+    }
+
+    #[test]
+    fn test_parse_hours_minutes_seconds() {
+        let json = r#"{"duration": "PT2H30M15S"}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        assert_eq!(wrapper.duration.unwrap().num_seconds(), 9015); // 2*3600 + 30*60 + 15
+    }
+
+    #[test]
+    fn test_parse_days() {
+        let json = r#"{"duration": "P2DT1H"}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        // 2 days + 1 hour = 2*24*3600 + 3600 = 172800 + 3600 = 176400
+        assert_eq!(wrapper.duration.unwrap().num_seconds(), 176400);
+    }
+
+    #[test]
+    fn test_parse_fractional_seconds() {
+        let json = r#"{"duration": "PT1.5S"}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        let dur = wrapper.duration.unwrap();
+        assert_eq!(dur.num_seconds(), 1);
+        // Check that we have nanoseconds for the fractional part
+        assert!(dur.num_nanoseconds().unwrap() >= 1_500_000_000);
+    }
+
+    #[test]
+    fn test_parse_none_duration() {
+        let json = r#"{"duration": null}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        assert!(wrapper.duration.is_none());
+    }
+
+    #[test]
+    fn test_parse_invalid_duration() {
+        let json = r#"{"duration": "invalid"}"#;
+        let result: Result<DurationWrapper, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_zero_duration() {
+        let json = r#"{"duration": "PT0S"}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        assert_eq!(wrapper.duration.unwrap().num_seconds(), 0);
+    }
+
+    #[test]
+    fn test_parse_complex_duration() {
+        // 1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds
+        let json = r#"{"duration": "P1Y2M3DT4H5M6S"}"#;
+        let wrapper: DurationWrapper = serde_json::from_str(json).unwrap();
+        let dur = wrapper.duration.unwrap();
+        // Approximate: 1*365*24*3600 + 2*30*24*3600 + 3*24*3600 + 4*3600 + 5*60 + 6
+        // = 31536000 + 5184000 + 259200 + 14400 + 300 + 6 = 36993906
+        assert_eq!(dur.num_seconds(), 36993906);
+    }
+
+    // StageOrStages tests
+    #[test]
+    fn test_stage_or_stages_single() {
+        let json =
+            r#"{"job_id": "1", "stage": "analyze", "finished": 5, "running": 2, "pending": 1}"#;
+        let stage: StageOrStages = serde_json::from_str(json).unwrap();
+        match stage {
+            StageOrStages::Stage(s) => {
+                assert_eq!(s.job_id, "1");
+                assert_eq!(s.stage, "analyze");
+                assert_eq!(s.finished, 5);
+            }
+            StageOrStages::Stages(_) => panic!("Expected Stage variant, got Stages"),
+        }
+    }
+
+    #[test]
+    fn test_stage_or_stages_array() {
+        let json = r#"[
+            {"job_id": "1", "stage": "analyze", "finished": 5, "running": 2, "pending": 1},
+            {"job_id": "2", "stage": "ingest", "finished": 3, "running": 1, "pending": 0}
+        ]"#;
+        let stages: StageOrStages = serde_json::from_str(json).unwrap();
+        match stages {
+            StageOrStages::Stages(vec) => {
+                assert_eq!(vec.len(), 2);
+                assert_eq!(vec[0].job_id, "1");
+                assert_eq!(vec[1].job_id, "2");
+            }
+            StageOrStages::Stage(_) => panic!("Expected Stages variant, got Stage"),
+        }
+    }
+
+    #[test]
+    fn test_stage_display() {
+        let stage = Stage {
+            job_id: "test-123".to_string(),
+            stage: "analyze".to_string(),
+            finished: 10,
+            running: 2,
+            pending: 5,
+        };
+
+        let display = format!("{}", stage);
+        assert!(display.contains("analyze"));
+        assert!(display.contains("10"));
+        assert!(display.contains("2"));
+        assert!(display.contains("5"));
     }
 }

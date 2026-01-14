@@ -37,14 +37,14 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 pub fn render(app: &mut App, f: &mut Frame) {
     let chunks = Layout::vertical([
-            Constraint::Length(4),
-            Constraint::Min(1),
-            Constraint::Min(0),
-            Constraint::Length(1),
-            Constraint::Length(1),
-        ])
-        .flex(Flex::Start)
-        .split(f.area());
+        Constraint::Length(4),
+        Constraint::Min(1),
+        Constraint::Min(0),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .flex(Flex::Start)
+    .split(f.area());
     let title_block = Block::default()
         .borders(Borders::ALL)
         .border_type(ratatui::widgets::BorderType::Rounded);
