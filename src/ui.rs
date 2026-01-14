@@ -127,17 +127,19 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     if let Some(index) = app.collection_tablestate.selected() {
         let result = &app.status.results[index];
-        let body = format!(
-            "Name: {}\nTotal: {}\nActive: {}\nFinished: {}\nTodo: {}\nDoing: {}\nSucceeded: {}\nFailed: {}",
-            result.name,
-            result.total,
-            result.active,
-            result.finished,
-            result.todo,
-            result.doing,
-            result.succeeded,
-            result.failed
-        );
+        let mut tasks = vec![];
+        for batch in result.batches.clone() {
+            for queue in batch.queues {
+                for task in queue.tasks {
+                    let task = format!(
+                        "{} (Total: {}, Active: {}, Finished: {}, Todo: {}, Doing: {}, Succeeded: {}, Failed: {})",
+                        task.name, task.total, task.active, task.finished, task.todo, task.doing, task.succeeded, task.failed
+                    );
+                    tasks.push(task);
+                }
+            }
+        }
+        let body = tasks.join("\n");
         let title = match &result.collection {
             Some(col) => format!("Collection {} <{}>", col.collection_id, col.label),
             None => "Details".to_string(),
