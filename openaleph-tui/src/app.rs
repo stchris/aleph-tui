@@ -1,6 +1,6 @@
 use chrono::{DateTime, Local};
 use color_eyre::eyre::eyre;
-use openaleph_api::{Client, Metadata, SearchResponse, Status};
+use openaleph_api::{Client, InvestigationsResponse, Metadata, SearchResponse, Status};
 use ratatui::widgets::{ListState, TableState};
 use serde::{
     de::{MapAccess, Visitor},
@@ -21,6 +21,11 @@ pub struct SearchFetchResult {
     pub error: Option<String>,
 }
 
+pub struct InvestigationsFetchResult {
+    pub response: InvestigationsResponse,
+    pub error: Option<String>,
+}
+
 pub struct App {
     pub status: Status,
     pub metadata: Metadata,
@@ -36,6 +41,12 @@ pub struct App {
     pub search_list_state: ListState,
     pub is_searching: bool,
     pub has_searched: bool,
+    pub investigations_query: String,
+    pub investigations_response: InvestigationsResponse,
+    pub investigations_error: String,
+    pub investigations_list_state: TableState,
+    pub is_searching_investigations: bool,
+    pub has_loaded_investigations: bool,
     pub active_tab: Tab,
     pub current_view: CurrentView,
     pub profile_tablestate: TableState,
@@ -47,6 +58,8 @@ pub struct App {
     fetch_result_tx: mpsc::Sender<FetchResult>,
     search_result_rx: mpsc::Receiver<SearchFetchResult>,
     search_result_tx: mpsc::Sender<SearchFetchResult>,
+    investigations_result_rx: mpsc::Receiver<InvestigationsFetchResult>,
+    investigations_result_tx: mpsc::Sender<InvestigationsFetchResult>,
 }
 
 #[derive(Clone, Debug)]
@@ -170,6 +183,7 @@ pub mod tests {
         let config = create_test_config();
         let (tx, rx) = mpsc::channel(1);
         let (search_tx, search_rx) = mpsc::channel(1);
+        let (investigations_tx, investigations_rx) = mpsc::channel(1);
 
         App {
             status: Status::default(),
@@ -186,6 +200,12 @@ pub mod tests {
             search_list_state: ListState::default(),
             is_searching: false,
             has_searched: false,
+            investigations_query: String::default(),
+            investigations_response: InvestigationsResponse::default(),
+            investigations_error: String::default(),
+            investigations_list_state: TableState::default(),
+            is_searching_investigations: false,
+            has_loaded_investigations: false,
             active_tab: Tab::Search,
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
@@ -195,6 +215,8 @@ pub mod tests {
             fetch_result_tx: tx,
             search_result_rx: search_rx,
             search_result_tx: search_tx,
+            investigations_result_rx: investigations_rx,
+            investigations_result_tx: investigations_tx,
         }
     }
 
@@ -582,6 +604,7 @@ impl App {
         // Create channel for background fetch results (buffer size of 1 since we only have one fetch at a time)
         let (fetch_result_tx, fetch_result_rx) = mpsc::channel(1);
         let (search_result_tx, search_result_rx) = mpsc::channel(1);
+        let (investigations_result_tx, investigations_result_rx) = mpsc::channel(1);
 
         Ok(Self {
             status: Status::default(),
@@ -597,6 +620,12 @@ impl App {
             search_list_state: ListState::default(),
             is_searching: false,
             has_searched: false,
+            investigations_query: String::default(),
+            investigations_response: InvestigationsResponse::default(),
+            investigations_error: String::default(),
+            investigations_list_state: TableState::default(),
+            is_searching_investigations: false,
+            has_loaded_investigations: false,
             active_tab: Tab::Search,
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
@@ -607,6 +636,8 @@ impl App {
             fetch_result_tx,
             search_result_rx,
             search_result_tx,
+            investigations_result_rx,
+            investigations_result_tx,
         })
     }
 
@@ -759,6 +790,85 @@ impl App {
         }
     }
 
+    pub fn push_investigations_search_char(&mut self, character: char) {
+        self.investigations_query.push(character);
+    }
+
+    pub fn pop_investigations_search_char(&mut self) {
+        self.investigations_query.pop();
+    }
+
+    pub fn start_investigations_search(&mut self) {
+        if self.is_searching_investigations {
+            return;
+        }
+
+        self.is_searching_investigations = true;
+        self.investigations_error.clear();
+        let query = self.investigations_query.trim().to_owned();
+        let tx = self.investigations_result_tx.clone();
+        let profile = self.current_profile();
+        let user_agent = format!("openaleph-tui/{}", self.version);
+
+        tokio::spawn(async move {
+            let client = Client::new(profile.url, profile.token, user_agent);
+            let result = match client.investigations(&query, 30).await {
+                Ok(response) => InvestigationsFetchResult {
+                    response,
+                    error: None,
+                },
+                Err(error) => InvestigationsFetchResult {
+                    response: InvestigationsResponse::default(),
+                    error: Some(error.to_string()),
+                },
+            };
+            let _ = tx.send(result).await;
+        });
+    }
+
+    pub fn maybe_start_investigations_search(&mut self) {
+        if !self.has_loaded_investigations && !self.is_searching_investigations {
+            self.start_investigations_search();
+        }
+    }
+
+    pub fn poll_investigations_result(&mut self) {
+        match self.investigations_result_rx.try_recv() {
+            Ok(result) => {
+                self.investigations_response = result.response;
+                self.investigations_error = result.error.unwrap_or_default();
+                self.investigations_list_state
+                    .select((!self.investigations_response.results.is_empty()).then_some(0));
+                self.is_searching_investigations = false;
+                self.has_loaded_investigations = true;
+            }
+            Err(mpsc::error::TryRecvError::Empty) => {}
+            Err(mpsc::error::TryRecvError::Disconnected) => {
+                self.is_searching_investigations = false;
+            }
+        }
+    }
+
+    pub fn investigation_up(&mut self) {
+        let selected = self
+            .investigations_list_state
+            .selected()
+            .unwrap_or_default();
+        if selected > 0 {
+            self.investigations_list_state.select(Some(selected - 1));
+        }
+    }
+
+    pub fn investigation_down(&mut self) {
+        let selected = self
+            .investigations_list_state
+            .selected()
+            .unwrap_or_default();
+        if selected + 1 < self.investigations_response.results.len() {
+            self.investigations_list_state.select(Some(selected + 1));
+        }
+    }
+
     pub fn next_tab(&mut self) {
         self.active_tab = Tab::ALL[(self.active_tab.index() + 1) % Tab::ALL.len()];
     }
@@ -832,6 +942,11 @@ impl App {
         self.search_error = String::default();
         self.search_list_state.select(None);
         self.has_searched = false;
+        self.investigations_query.clear();
+        self.investigations_response = InvestigationsResponse::default();
+        self.investigations_error.clear();
+        self.investigations_list_state.select(None);
+        self.has_loaded_investigations = false;
     }
 
     pub(crate) fn print_version(&self) {

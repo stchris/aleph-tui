@@ -243,6 +243,34 @@ pub struct SearchCollection {
     pub label: String,
 }
 
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct InvestigationsResponse {
+    pub results: Vec<Investigation>,
+    pub total: u64,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub query_q: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct Investigation {
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub created_at: String,
+    #[serde(default)]
+    pub updated_at: String,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub count: u64,
+    pub creator: Option<InvestigationCreator>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct InvestigationCreator {
+    #[serde(default)]
+    pub name: String,
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::read_to_string;

@@ -58,6 +58,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
     match app.active_tab {
         Tab::Search => render_search(app, f, root_chunks[1]),
+        Tab::Investigations => render_investigations(app, f, root_chunks[1]),
         Tab::Status => render_status(app, f, root_chunks[1]),
         _ => {
             let pane = Paragraph::new(format!("{} pane", app.active_tab.title()))
@@ -215,6 +216,113 @@ fn highlighted_line(snippet: &str) -> Line<'static> {
     }
     spans.push(Span::raw(remainder.to_owned()));
     Line::from(spans)
+}
+
+fn render_investigations(app: &mut App, f: &mut Frame, area: Rect) {
+    let chunks = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(3),
+        Constraint::Length(2),
+        Constraint::Min(1),
+    ])
+    .split(area);
+    let search_area = Layout::horizontal([
+        Constraint::Percentage(15),
+        Constraint::Percentage(70),
+        Constraint::Percentage(15),
+    ])
+    .split(chunks[1])[1];
+
+    let search_title = if app.is_searching_investigations {
+        " Search investigations (loading...) "
+    } else {
+        " Search investigations "
+    };
+    let search = Paragraph::new(app.investigations_query.as_str()).block(
+        Block::default()
+            .title(search_title)
+            .borders(Borders::ALL)
+            .border_type(ratatui::widgets::BorderType::Rounded)
+            .border_style(Style::new().fg(Color::Cyan)),
+    );
+    f.render_widget(search, search_area);
+
+    let cursor_offset = app.investigations_query.chars().count() as u16;
+    let max_offset = search_area.width.saturating_sub(3);
+    if !app.show_profile_selector() {
+        f.set_cursor_position((
+            search_area.x + 1 + cursor_offset.min(max_offset),
+            search_area.y + 1,
+        ));
+    }
+
+    let summary = if !app.investigations_error.is_empty() {
+        Line::styled(
+            app.investigations_error.clone(),
+            Style::new().fg(Color::Red),
+        )
+    } else if app.is_searching_investigations {
+        Line::from("Loading investigations...")
+    } else if app.investigations_response.total > 0 {
+        Line::from(format!(
+            "{} investigations",
+            app.investigations_response
+                .total
+                .to_formatted_string(&Locale::en)
+        ))
+    } else if app.has_loaded_investigations {
+        Line::from("No investigations found")
+    } else {
+        Line::from("Loading investigations...")
+    };
+    f.render_widget(
+        Paragraph::new(summary).alignment(Alignment::Center),
+        chunks[2],
+    );
+
+    let rows = app
+        .investigations_response
+        .results
+        .iter()
+        .map(|investigation| {
+            let creator = investigation
+                .creator
+                .as_ref()
+                .map(|creator| creator.name.as_str())
+                .filter(|name| !name.is_empty())
+                .unwrap_or("-");
+            Row::new(vec![
+                investigation.label.clone(),
+                creator.to_owned(),
+                investigation
+                    .created_at
+                    .split('T')
+                    .next()
+                    .unwrap_or_default()
+                    .to_owned(),
+                investigation
+                    .updated_at
+                    .split('T')
+                    .next()
+                    .unwrap_or_default()
+                    .to_owned(),
+                investigation.count.to_formatted_string(&Locale::en),
+            ])
+        });
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Min(20),
+            Constraint::Length(20),
+            Constraint::Length(25),
+            Constraint::Length(25),
+            Constraint::Length(12),
+        ],
+    )
+    .header(Row::new(["Investigation", "Creator", "Created", "Updated", "Count"]).bottom_margin(1))
+    .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+    .highlight_symbol(">>");
+    f.render_stateful_widget(table, chunks[3], &mut app.investigations_list_state);
 }
 
 fn render_status(app: &mut App, f: &mut Frame, area: Rect) {

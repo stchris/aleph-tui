@@ -51,6 +51,8 @@ async fn main() -> Result<()> {
         // Poll for completed fetch results (non-blocking)
         app.poll_fetch_result();
         app.poll_search_result();
+        app.poll_investigations_result();
+        app.maybe_start_investigations_search();
 
         tui.draw(&mut app)?;
         match tui.events.next()? {

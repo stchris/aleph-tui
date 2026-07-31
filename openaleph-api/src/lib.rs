@@ -58,6 +58,27 @@ impl Client {
             .await
     }
 
+    pub async fn investigations(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> reqwest::Result<InvestigationsResponse> {
+        self.http
+            .get(format!("{}/api/2/collections", self.base_url))
+            .header(AUTHORIZATION, &self.authorization)
+            .header(USER_AGENT, &self.user_agent)
+            .query(&[
+                ("q", query.to_owned()),
+                ("limit", limit.to_string()),
+                ("filter:category", "casefile".to_owned()),
+            ])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+    }
+
     async fn get<T>(&self, endpoint: &str) -> reqwest::Result<T>
     where
         T: serde::de::DeserializeOwned,
@@ -216,5 +237,44 @@ mod tests {
         assert_eq!(response.total, 1);
         assert!(response.query_q.is_empty());
         assert!(response.results[0].highlight.is_empty());
+    }
+
+    #[tokio::test]
+    async fn searches_investigations() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/2/collections"))
+            .and(query_param("q", "fraud"))
+            .and(query_param("limit", "30"))
+            .and(query_param("filter:category", "casefile"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{
+                    "id": "42",
+                    "label": "Fraud investigation",
+                    "created_at": "2026-07-01T10:00:00Z",
+                    "updated_at": "2026-07-30T12:00:00Z",
+                    "count": 1234,
+                    "creator": {"id": "7", "name": "Ada Lovelace"}
+                }],
+                "total": 1,
+                "query_q": "fraud"
+            })))
+            .mount(&server)
+            .await;
+
+        let response = Client::new(server.uri(), "test-token", "test")
+            .investigations("fraud", 30)
+            .await
+            .unwrap();
+
+        assert_eq!(response.total, 1);
+        assert_eq!(response.results[0].count, 1234);
+        assert_eq!(
+            response.results[0]
+                .creator
+                .as_ref()
+                .map(|role| role.name.as_str()),
+            Some("Ada Lovelace")
+        );
     }
 }

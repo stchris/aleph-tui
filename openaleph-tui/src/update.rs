@@ -10,13 +10,19 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         {
             app.quit()
         }
-        KeyCode::Char('q') if app.active_tab != Tab::Search || app.show_profile_selector() => {
+        KeyCode::Char('q')
+            if !matches!(app.active_tab, Tab::Search | Tab::Investigations)
+                || app.show_profile_selector() =>
+        {
             app.quit()
         }
         KeyCode::Char('p') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
             app.toggle_profile_selector()
         }
-        KeyCode::Char('p') if app.active_tab != Tab::Search || app.show_profile_selector() => {
+        KeyCode::Char('p')
+            if !matches!(app.active_tab, Tab::Search | Tab::Investigations)
+                || app.show_profile_selector() =>
+        {
             app.toggle_profile_selector()
         }
         KeyCode::Tab if !app.show_profile_selector() => app.next_tab(),
@@ -25,6 +31,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             true => app.profile_up(),
             false if app.active_tab == Tab::Search && key_event.code == KeyCode::Up => {
                 app.search_result_up()
+            }
+            false if app.active_tab == Tab::Investigations && key_event.code == KeyCode::Up => {
+                app.investigation_up()
             }
             false if app.active_tab == Tab::Status => app.collection_up(),
             false
@@ -35,12 +44,23 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             {
                 app.push_search_char('k')
             }
+            false
+                if app.active_tab == Tab::Investigations
+                    && !key_event.modifiers.intersects(
+                        KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
+                    ) =>
+            {
+                app.push_investigations_search_char('k')
+            }
             false => {}
         },
         KeyCode::Down | KeyCode::Char('j') => match app.show_profile_selector() {
             true => app.profile_down(),
             false if app.active_tab == Tab::Search && key_event.code == KeyCode::Down => {
                 app.search_result_down()
+            }
+            false if app.active_tab == Tab::Investigations && key_event.code == KeyCode::Down => {
+                app.investigation_down()
             }
             false if app.active_tab == Tab::Status => app.collection_down(),
             false
@@ -51,13 +71,27 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             {
                 app.push_search_char('j')
             }
+            false
+                if app.active_tab == Tab::Investigations
+                    && !key_event.modifiers.intersects(
+                        KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
+                    ) =>
+            {
+                app.push_investigations_search_char('j')
+            }
             false => {}
         },
         KeyCode::Enter if app.current_view == CurrentView::ProfileSwitcher => {
             app.toggle_profile_selector();
         }
         KeyCode::Enter if app.active_tab == Tab::Search => app.start_search(),
+        KeyCode::Enter if app.active_tab == Tab::Investigations => {
+            app.start_investigations_search()
+        }
         KeyCode::Backspace if app.active_tab == Tab::Search => app.pop_search_char(),
+        KeyCode::Backspace if app.active_tab == Tab::Investigations => {
+            app.pop_investigations_search_char()
+        }
         KeyCode::Char(character)
             if app.active_tab == Tab::Search
                 && !app.show_profile_selector()
@@ -66,6 +100,15 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
                 ) =>
         {
             app.push_search_char(character);
+        }
+        KeyCode::Char(character)
+            if app.active_tab == Tab::Investigations
+                && !app.show_profile_selector()
+                && !key_event.modifiers.intersects(
+                    KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
+                ) =>
+        {
+            app.push_investigations_search_char(character);
         }
         _ => {}
     };
@@ -212,15 +255,14 @@ mod tests {
         assert_eq!(app.current_view, CurrentView::Main);
     }
 
-    #[test]
-    fn test_enter_in_main_view_no_effect() {
+    #[tokio::test]
+    async fn test_enter_searches_investigations() {
         let mut app = create_test_app();
         app.active_tab = Tab::Investigations;
-        assert_eq!(app.current_view, CurrentView::Main);
 
         update(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-        // Should still be in main view
-        assert_eq!(app.current_view, CurrentView::Main);
+
+        assert!(app.is_searching_investigations);
     }
 
     #[tokio::test]
@@ -234,20 +276,24 @@ mod tests {
     }
 
     #[test]
-    fn test_unhandled_key_no_effect() {
+    fn test_investigations_query_editing() {
         let mut app = create_test_app();
         app.active_tab = Tab::Investigations;
-        let initial_view = app.current_view.clone();
-        let initial_quit = app.should_quit;
 
+        for character in ['q', 'u', 'i', 'p'] {
+            update(
+                &mut app,
+                KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE),
+            );
+        }
         update(
             &mut app,
-            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE),
         );
 
-        // State should be unchanged
-        assert_eq!(app.current_view, initial_view);
-        assert_eq!(app.should_quit, initial_quit);
+        assert_eq!(app.investigations_query, "qui");
+        assert!(!app.should_quit);
+        assert_eq!(app.current_view, CurrentView::Main);
     }
 
     #[test]
@@ -280,6 +326,19 @@ mod tests {
         assert_eq!(app.search_list_state.selected(), Some(1));
         update(&mut app, KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
         assert_eq!(app.search_list_state.selected(), Some(0));
+    }
+
+    #[test]
+    fn test_investigation_navigation() {
+        let mut app = create_test_app();
+        app.active_tab = Tab::Investigations;
+        app.investigations_response.results = vec![Default::default(), Default::default()];
+        app.investigations_list_state.select(Some(0));
+
+        update(&mut app, KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        assert_eq!(app.investigations_list_state.selected(), Some(1));
+        update(&mut app, KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(app.investigations_list_state.selected(), Some(0));
     }
 
     #[test]
