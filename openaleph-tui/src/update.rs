@@ -290,8 +290,6 @@ mod tests {
         update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
         assert_eq!(app.active_tab, Tab::Investigations);
         update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
-        assert_eq!(app.active_tab, Tab::Datasets);
-        update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
         assert_eq!(app.active_tab, Tab::Status);
         update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
         assert_eq!(app.active_tab, Tab::Search);

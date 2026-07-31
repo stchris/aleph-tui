@@ -534,12 +534,7 @@ pub enum Tab {
 }
 
 impl Tab {
-    pub const ALL: [Self; 4] = [
-        Self::Search,
-        Self::Investigations,
-        Self::Datasets,
-        Self::Status,
-    ];
+    pub const ALL: [Self; 3] = [Self::Search, Self::Investigations, Self::Status];
 
     pub const fn title(self) -> &'static str {
         match self {
