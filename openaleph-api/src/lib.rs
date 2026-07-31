@@ -40,6 +40,24 @@ impl Client {
         Ok((status, metadata))
     }
 
+    pub async fn search(&self, query: &str, limit: usize) -> reqwest::Result<SearchResponse> {
+        self.http
+            .get(format!("{}/api/2/entities", self.base_url))
+            .header(AUTHORIZATION, &self.authorization)
+            .header(USER_AGENT, &self.user_agent)
+            .query(&[
+                ("q", query.to_owned()),
+                ("limit", limit.to_string()),
+                ("highlight", "true".to_owned()),
+                ("dehydrate", "true".to_owned()),
+            ])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+    }
+
     async fn get<T>(&self, endpoint: &str) -> reqwest::Result<T>
     where
         T: serde::de::DeserializeOwned,
@@ -60,7 +78,7 @@ impl Client {
 mod tests {
     use super::*;
     use wiremock::{
-        matchers::{header, method, path},
+        matchers::{header, method, path, query_param},
         Mock, MockServer, ResponseTemplate,
     };
 
@@ -131,5 +149,72 @@ mod tests {
             .unwrap_err();
 
         assert!(error.is_decode());
+    }
+
+    #[tokio::test]
+    async fn searches_entities_with_highlights() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/2/entities"))
+            .and(query_param("q", "time"))
+            .and(query_param("limit", "30"))
+            .and(query_param("highlight", "true"))
+            .and(query_param("dehydrate", "true"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{
+                    "id": "doc-1",
+                    "schema": "Document",
+                    "caption": "Example document",
+                    "collection": {"id": "1", "label": "Documents"},
+                    "highlight": {"bodyText": ["An example <em>time</em> snippet"]}
+                }],
+                "total": 1,
+                "query_q": "time"
+            })))
+            .mount(&server)
+            .await;
+
+        let response = Client::new(server.uri(), "test-token", "test")
+            .search("time", 30)
+            .await
+            .unwrap();
+
+        assert_eq!(response.total, 1);
+        assert_eq!(response.results[0].caption, "Example document");
+        assert_eq!(
+            response.results[0].highlight["bodyText"][0],
+            "An example <em>time</em> snippet"
+        );
+    }
+
+    #[tokio::test]
+    async fn allows_an_empty_search_query() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/2/entities"))
+            .and(query_param("q", ""))
+            .and(query_param("limit", "30"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{
+                    "id": "doc-1",
+                    "schema": "Document",
+                    "caption": "Unhighlighted document",
+                    "collection": null,
+                    "highlight": null
+                }],
+                "total": 1,
+                "query_q": null
+            })))
+            .mount(&server)
+            .await;
+
+        let response = Client::new(server.uri(), "test-token", "test")
+            .search("", 30)
+            .await
+            .unwrap();
+
+        assert_eq!(response.total, 1);
+        assert!(response.query_q.is_empty());
+        assert!(response.results[0].highlight.is_empty());
     }
 }

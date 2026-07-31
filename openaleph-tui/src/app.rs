@@ -1,7 +1,7 @@
 use chrono::{DateTime, Local};
 use color_eyre::eyre::eyre;
-use openaleph_api::{Client, Metadata, Status};
-use ratatui::widgets::TableState;
+use openaleph_api::{Client, Metadata, SearchResponse, Status};
+use ratatui::widgets::{ListState, TableState};
 use serde::{
     de::{MapAccess, Visitor},
     Deserialize,
@@ -16,6 +16,11 @@ pub struct FetchResult {
     pub error: Option<String>,
 }
 
+pub struct SearchFetchResult {
+    pub response: SearchResponse,
+    pub error: Option<String>,
+}
+
 pub struct App {
     pub status: Status,
     pub metadata: Metadata,
@@ -25,6 +30,13 @@ pub struct App {
     pub version: String,
     pub error_message: String,
     pub collection_tablestate: TableState,
+    pub search_query: String,
+    pub search_response: SearchResponse,
+    pub search_error: String,
+    pub search_list_state: ListState,
+    pub is_searching: bool,
+    pub has_searched: bool,
+    pub active_tab: Tab,
     pub current_view: CurrentView,
     pub profile_tablestate: TableState,
     pub last_fetch: DateTime<Local>,
@@ -33,6 +45,8 @@ pub struct App {
     fetch_result_rx: mpsc::Receiver<FetchResult>,
     /// Channel sender for background fetch results
     fetch_result_tx: mpsc::Sender<FetchResult>,
+    search_result_rx: mpsc::Receiver<SearchFetchResult>,
+    search_result_tx: mpsc::Sender<SearchFetchResult>,
 }
 
 #[derive(Clone, Debug)]
@@ -155,6 +169,7 @@ pub mod tests {
     pub fn create_test_app() -> App {
         let config = create_test_config();
         let (tx, rx) = mpsc::channel(1);
+        let (search_tx, search_rx) = mpsc::channel(1);
 
         App {
             status: Status::default(),
@@ -165,12 +180,21 @@ pub mod tests {
             version: "0.5.0-test".to_string(),
             error_message: String::default(),
             collection_tablestate: TableState::default(),
+            search_query: String::default(),
+            search_response: SearchResponse::default(),
+            search_error: String::default(),
+            search_list_state: ListState::default(),
+            is_searching: false,
+            has_searched: false,
+            active_tab: Tab::Search,
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
             last_fetch: Local::now(),
             is_fetching: false,
             fetch_result_rx: rx,
             fetch_result_tx: tx,
+            search_result_rx: search_rx,
+            search_result_tx: search_tx,
         }
     }
 
@@ -500,6 +524,37 @@ pub enum CurrentView {
     ProfileSwitcher,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Tab {
+    #[default]
+    Search,
+    Investigations,
+    Datasets,
+    Status,
+}
+
+impl Tab {
+    pub const ALL: [Self; 4] = [
+        Self::Search,
+        Self::Investigations,
+        Self::Datasets,
+        Self::Status,
+    ];
+
+    pub const fn title(self) -> &'static str {
+        match self {
+            Self::Search => "Search",
+            Self::Investigations => "Investigations",
+            Self::Datasets => "Datasets",
+            Self::Status => "Status",
+        }
+    }
+
+    pub fn index(self) -> usize {
+        Self::ALL.iter().position(|tab| *tab == self).unwrap_or(0)
+    }
+}
+
 impl App {
     pub fn new() -> color_eyre::Result<Self> {
         let mut config_path =
@@ -531,6 +586,7 @@ impl App {
 
         // Create channel for background fetch results (buffer size of 1 since we only have one fetch at a time)
         let (fetch_result_tx, fetch_result_rx) = mpsc::channel(1);
+        let (search_result_tx, search_result_rx) = mpsc::channel(1);
 
         Ok(Self {
             status: Status::default(),
@@ -540,6 +596,13 @@ impl App {
             version: env!("CARGO_PKG_VERSION").to_string(),
             error_message: String::default(),
             collection_tablestate: TableState::default(),
+            search_query: String::default(),
+            search_response: SearchResponse::default(),
+            search_error: String::default(),
+            search_list_state: ListState::default(),
+            is_searching: false,
+            has_searched: false,
+            active_tab: Tab::Search,
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
             last_fetch,
@@ -547,6 +610,8 @@ impl App {
             is_fetching: false,
             fetch_result_rx,
             fetch_result_tx,
+            search_result_rx,
+            search_result_tx,
         })
     }
 
@@ -634,6 +699,80 @@ impl App {
         self.current_view == CurrentView::ProfileSwitcher
     }
 
+    pub fn push_search_char(&mut self, character: char) {
+        self.search_query.push(character);
+    }
+
+    pub fn pop_search_char(&mut self) {
+        self.search_query.pop();
+    }
+
+    pub fn start_search(&mut self) {
+        let query = self.search_query.trim().to_owned();
+        if self.is_searching {
+            return;
+        }
+
+        self.is_searching = true;
+        self.has_searched = true;
+        self.search_error.clear();
+        let tx = self.search_result_tx.clone();
+        let profile = self.current_profile();
+        let user_agent = format!("openaleph-tui/{}", self.version);
+
+        tokio::spawn(async move {
+            let client = Client::new(profile.url, profile.token, user_agent);
+            let result = match client.search(&query, 30).await {
+                Ok(response) => SearchFetchResult {
+                    response,
+                    error: None,
+                },
+                Err(error) => SearchFetchResult {
+                    response: SearchResponse::default(),
+                    error: Some(error.to_string()),
+                },
+            };
+            let _ = tx.send(result).await;
+        });
+    }
+
+    pub fn poll_search_result(&mut self) {
+        match self.search_result_rx.try_recv() {
+            Ok(result) => {
+                self.search_response = result.response;
+                self.search_error = result.error.unwrap_or_default();
+                self.search_list_state
+                    .select((!self.search_response.results.is_empty()).then_some(0));
+                self.is_searching = false;
+            }
+            Err(mpsc::error::TryRecvError::Empty) => {}
+            Err(mpsc::error::TryRecvError::Disconnected) => self.is_searching = false,
+        }
+    }
+
+    pub fn search_result_up(&mut self) {
+        let selected = self.search_list_state.selected().unwrap_or_default();
+        if selected > 0 {
+            self.search_list_state.select(Some(selected - 1));
+        }
+    }
+
+    pub fn search_result_down(&mut self) {
+        let selected = self.search_list_state.selected().unwrap_or_default();
+        if selected + 1 < self.search_response.results.len() {
+            self.search_list_state.select(Some(selected + 1));
+        }
+    }
+
+    pub fn next_tab(&mut self) {
+        self.active_tab = Tab::ALL[(self.active_tab.index() + 1) % Tab::ALL.len()];
+    }
+
+    pub fn previous_tab(&mut self) {
+        let index = (self.active_tab.index() + Tab::ALL.len() - 1) % Tab::ALL.len();
+        self.active_tab = Tab::ALL[index];
+    }
+
     pub fn set_profile(&mut self, profile: String) -> color_eyre::Result<()> {
         let p = self.config.profiles.iter().find(|p| p.name == profile);
         match p {
@@ -694,6 +833,10 @@ impl App {
         self.status = Status::default();
         self.metadata = Metadata::default();
         self.error_message = String::default();
+        self.search_response = SearchResponse::default();
+        self.search_error = String::default();
+        self.search_list_state.select(None);
+        self.has_searched = false;
     }
 
     pub(crate) fn print_version(&self) {

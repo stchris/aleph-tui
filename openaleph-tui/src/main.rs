@@ -50,6 +50,7 @@ async fn main() -> Result<()> {
     while !app.should_quit {
         // Poll for completed fetch results (non-blocking)
         app.poll_fetch_result();
+        app.poll_search_result();
 
         tui.draw(&mut app)?;
         match tui.events.next()? {

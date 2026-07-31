@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use chrono::Duration;
 use serde::{Deserialize, Deserializer};
@@ -41,6 +41,14 @@ mod duration_serde {
             }
         }
     }
+}
+
+fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -208,6 +216,31 @@ pub struct Metadata {
     pub status: String,
     pub maintenance: bool,
     pub app: MetadataApp,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct SearchResponse {
+    pub results: Vec<SearchResult>,
+    pub total: u64,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub query_q: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct SearchResult {
+    pub id: String,
+    pub schema: String,
+    #[serde(default)]
+    pub caption: String,
+    pub collection: Option<SearchCollection>,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub highlight: HashMap<String, Vec<String>>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct SearchCollection {
+    pub id: String,
+    pub label: String,
 }
 
 #[cfg(test)]
