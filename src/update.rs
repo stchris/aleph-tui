@@ -19,10 +19,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             true => app.profile_down(),
             false => app.collection_down(),
         },
-        KeyCode::Enter
-            if app.current_view == CurrentView::ProfileSwitcher => {
-                app.toggle_profile_selector();
-            }
+        KeyCode::Enter if app.current_view == CurrentView::ProfileSwitcher => {
+            app.toggle_profile_selector();
+        }
         _ => {}
     };
 }
