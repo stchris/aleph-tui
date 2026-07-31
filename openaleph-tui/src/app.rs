@@ -1,8 +1,7 @@
-use crate::models::{Metadata, Status};
 use chrono::{DateTime, Local};
 use color_eyre::eyre::eyre;
+use openaleph_api::{Client, Metadata, Status};
 use ratatui::widgets::TableState;
-use reqwest::header::AUTHORIZATION;
 use serde::{
     de::{MapAccess, Visitor},
     Deserialize,
@@ -177,8 +176,8 @@ pub mod tests {
 
     pub fn create_test_app_with_collections() -> App {
         let mut app = create_test_app();
-        let test = read_to_string("testdata/results.json").unwrap();
-        app.status = serde_json::from_str(&test).unwrap();
+        let test = include_str!("../../openaleph-api/testdata/results.json");
+        app.status = serde_json::from_str(test).unwrap();
         app
     }
 
@@ -455,179 +454,6 @@ pub mod tests {
         assert_eq!(profile.url, "http://localhost:8080");
     }
 
-    // API client tests with wiremock
-    use wiremock::{
-        matchers::{header, method, path},
-        Mock, MockServer, ResponseTemplate,
-    };
-
-    #[tokio::test]
-    async fn test_successful_fetch() {
-        let mock_server = MockServer::start().await;
-
-        // Mock the status endpoint
-        Mock::given(method("GET"))
-            .and(path("/api/2/status"))
-            .and(header("authorization", "Bearer test-token"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "results": [],
-                "total": 0
-            })))
-            .mount(&mock_server)
-            .await;
-
-        // Mock the metadata endpoint
-        Mock::given(method("GET"))
-            .and(path("/api/2/metadata"))
-            .and(header("authorization", "Bearer test-token"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "status": "ok",
-                "maintenance": false,
-                "app": {
-                    "title": "Test Aleph",
-                    "version": "1.0.0",
-                    "ftm_version": "4.0.0"
-                }
-            })))
-            .mount(&mock_server)
-            .await;
-
-        let result = App::do_fetch(
-            mock_server.uri(),
-            "test-token".to_string(),
-            "0.5.0-test".to_string(),
-        )
-        .await;
-
-        assert!(result.error.is_none());
-        assert_eq!(result.status.total, 0);
-        assert_eq!(result.metadata.status, "ok");
-    }
-
-    #[tokio::test]
-    async fn test_fetch_with_invalid_auth() {
-        let mock_server = MockServer::start().await;
-
-        // Mock unauthorized response
-        Mock::given(method("GET"))
-            .and(path("/api/2/status"))
-            .respond_with(ResponseTemplate::new(401))
-            .mount(&mock_server)
-            .await;
-
-        let result = App::do_fetch(
-            mock_server.uri(),
-            "invalid-token".to_string(),
-            "0.5.0-test".to_string(),
-        )
-        .await;
-
-        assert!(result.error.is_some());
-        assert!(result.error.unwrap().contains("401"));
-    }
-
-    #[tokio::test]
-    async fn test_fetch_with_network_error() {
-        // Use an invalid URL that will cause a connection error
-        let result = App::do_fetch(
-            "http://invalid-host-that-does-not-exist-12345:9999".to_string(),
-            "test-token".to_string(),
-            "0.5.0-test".to_string(),
-        )
-        .await;
-
-        assert!(result.error.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_fetch_with_malformed_json() {
-        let mock_server = MockServer::start().await;
-
-        // Mock response with invalid JSON
-        Mock::given(method("GET"))
-            .and(path("/api/2/status"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("{invalid json"))
-            .mount(&mock_server)
-            .await;
-
-        let result = App::do_fetch(
-            mock_server.uri(),
-            "test-token".to_string(),
-            "0.5.0-test".to_string(),
-        )
-        .await;
-
-        assert!(result.error.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_fetch_with_metadata_error() {
-        let mock_server = MockServer::start().await;
-
-        // Status endpoint succeeds
-        Mock::given(method("GET"))
-            .and(path("/api/2/status"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "results": [],
-                "total": 0
-            })))
-            .mount(&mock_server)
-            .await;
-
-        // Metadata endpoint fails
-        Mock::given(method("GET"))
-            .and(path("/api/2/metadata"))
-            .respond_with(ResponseTemplate::new(500))
-            .mount(&mock_server)
-            .await;
-
-        let result = App::do_fetch(
-            mock_server.uri(),
-            "test-token".to_string(),
-            "0.5.0-test".to_string(),
-        )
-        .await;
-
-        assert!(result.error.is_some());
-        assert!(result.error.unwrap().contains("500"));
-    }
-
-    #[tokio::test]
-    async fn test_fetch_includes_user_agent() {
-        let mock_server = MockServer::start().await;
-
-        // Verify user agent header is sent
-        Mock::given(method("GET"))
-            .and(path("/api/2/status"))
-            .and(header("user-agent", "aleph-tui/0.5.0-test"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "results": [],
-                "total": 0
-            })))
-            .expect(1)
-            .mount(&mock_server)
-            .await;
-
-        Mock::given(method("GET"))
-            .and(path("/api/2/metadata"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "status": "ok",
-                "maintenance": false,
-                "app": {}
-            })))
-            .mount(&mock_server)
-            .await;
-
-        let result = App::do_fetch(
-            mock_server.uri(),
-            "test-token".to_string(),
-            "0.5.0-test".to_string(),
-        )
-        .await;
-
-        assert!(result.error.is_none());
-    }
-
     #[tokio::test]
     async fn test_maybe_start_fetch_when_interval_elapsed() {
         let mut app = create_test_app();
@@ -746,55 +572,19 @@ impl App {
 
     /// Perform the actual fetch operation. This runs in a background task.
     async fn do_fetch(base_url: String, token: String, version: String) -> FetchResult {
-        let client = reqwest::Client::new();
-        let auth_header = format!("Bearer {}", token);
-        let user_agent = format!("aleph-tui/{}", version);
+        let user_agent = format!("openaleph-tui/{}", version);
+        let client = Client::new(base_url, token, user_agent);
 
-        // Fetch status
-        let status_url = format!("{}/api/2/status", base_url);
-        let status_result: Result<Status, reqwest::Error> = async {
-            client
-                .get(&status_url)
-                .header(AUTHORIZATION, &auth_header)
-                .header(reqwest::header::USER_AGENT, &user_agent)
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-                .await
-        }
-        .await;
-
-        // Fetch metadata
-        let metadata_url = format!("{}/api/2/metadata", base_url);
-        let metadata_result: Result<Metadata, reqwest::Error> = async {
-            client
-                .get(&metadata_url)
-                .header(AUTHORIZATION, &auth_header)
-                .header(reqwest::header::USER_AGENT, &user_agent)
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-                .await
-        }
-        .await;
-
-        match (status_result, metadata_result) {
-            (Ok(status), Ok(metadata)) => FetchResult {
+        match client.status_and_metadata().await {
+            Ok((status, metadata)) => FetchResult {
                 status,
                 metadata,
                 error: None,
             },
-            (Err(e), _) => FetchResult {
+            Err(error) => FetchResult {
                 status: Status::default(),
                 metadata: Metadata::default(),
-                error: Some(e.to_string()),
-            },
-            (_, Err(e)) => FetchResult {
-                status: Status::default(),
-                metadata: Metadata::default(),
-                error: Some(e.to_string()),
+                error: Some(error.to_string()),
             },
         }
     }
@@ -907,14 +697,14 @@ impl App {
     }
 
     pub(crate) fn print_version(&self) {
-        println!("aleph-tui {}", self.version);
+        println!("openaleph-tui {}", self.version);
     }
 
     pub(crate) fn print_help(&self) {
-        println!("aleph-tui");
+        println!("openaleph-tui");
         println!();
         println!("USAGE");
-        println!("aleph-tui [PROFILE]");
+        println!("openaleph-tui [PROFILE]");
         println!();
         println!("OPTIONS");
         println!("--version   Print version");

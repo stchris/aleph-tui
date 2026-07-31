@@ -27,28 +27,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aleph-tui"
-version = "0.5.0"
-dependencies = [
- "chrono",
- "color-eyre",
- "crossterm",
- "home",
- "humanize-duration",
- "iso8601-duration",
- "itertools 0.15.0",
- "num-format",
- "ratatui",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
- "wiremock",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1549,6 +1527,39 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+
+[[package]]
+name = "openaleph-api"
+version = "0.5.0"
+dependencies = [
+ "chrono",
+ "iso8601-duration",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
+name = "openaleph-tui"
+version = "0.5.0"
+dependencies = [
+ "chrono",
+ "color-eyre",
+ "crossterm",
+ "home",
+ "humanize-duration",
+ "itertools 0.15.0",
+ "num-format",
+ "openaleph-api",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+]
 
 [[package]]
 name = "openssl-probe"

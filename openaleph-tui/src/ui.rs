@@ -190,7 +190,7 @@ pub fn render(app: &mut App, f: &mut Frame) {
         .constraints([Constraint::Min(1), Constraint::Min(1), Constraint::Min(25)])
         .split(chunks[4]);
     f.render_widget(
-        Block::default().title(format!("aleph-tui version {}", app.version)),
+        Block::default().title(format!("openaleph-tui version {}", app.version)),
         status_bar_chunks[0],
     );
     let fetching_icon = match app.is_fetching {

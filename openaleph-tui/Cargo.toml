@@ -1,0 +1,29 @@
+[package]
+name = "openaleph-tui"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+description = "A text user interface for Aleph"
+
+[dependencies]
+openaleph-api = { path = "../openaleph-api" }
+chrono = "0.4"
+color-eyre = "0.6"
+crossterm = { version = "0.29", features = ["event-stream"] }
+home = "0.5"
+humanize-duration = { version = "0.0", features = ["chrono"] }
+itertools = "0.15"
+num-format = "0.4"
+ratatui = "0.30"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros"] }
+toml = "1.1"
+
+[dev-dependencies]
+serde_json = "1.0"
+tempfile = "3.27"
+
+[lints]
+workspace = true

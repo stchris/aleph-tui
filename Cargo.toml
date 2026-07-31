@@ -1,33 +1,6 @@
-[package]
-name = "aleph-tui"
-version = "0.5.0"
-edition = "2021"
-repository = "https://github.com/stchris/aleph-tui"
-homepage = "https://github.com/stchris/aleph-tui"
-description = "A text user interface for Aleph"
-license = "GPL-3.0-or-later"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-chrono = "0.4"
-color-eyre = "0.6"
-crossterm = { version = "0.29", features = ["event-stream"] }
-home = "0.5"
-humanize-duration = { version = "0.0", features = ["chrono"] }
-iso8601-duration = "0.2"
-itertools = "0.15"
-num-format = "0.4"
-ratatui = "0.30"
-reqwest = { version = "0.13", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tokio = { version = "1.53", features = ["rt-multi-thread", "macros"] }
-toml = "1.1"
-
-[dev-dependencies]
-wiremock = "0.6"
-tempfile = "3.27"
+[workspace]
+members = ["openaleph-api", "openaleph-tui"]
+resolver = "2"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
@@ -47,7 +20,7 @@ pre-release-hook = [
   "{{version}}",
 ]
 
-[dist.github-custom-runners]
+[workspace.metadata.dist.github-custom-runners]
 aarch64-apple-darwin = "macos-14"
 aarch64-unknown-linux-gnu = "ubuntu-22.04"
 aarch64-pc-windows-msvc = "ubuntu-22.04"
@@ -57,5 +30,12 @@ x86_64-unknown-linux-musl = "ubuntu-22.04"
 x86_64-pc-windows-msvc = "ubuntu-22.04"
 global = "ubuntu-22.04"
 
-[lints.clippy]
+[workspace.package]
+version = "0.5.0"
+edition = "2021"
+repository = "https://github.com/stchris/aleph-tui"
+homepage = "https://github.com/stchris/aleph-tui"
+license = "GPL-3.0-or-later"
+
+[workspace.lints.clippy]
 unwrap_used = "deny"

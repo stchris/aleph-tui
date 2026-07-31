@@ -1,4 +1,4 @@
-# Test Coverage Analysis for aleph-tui
+# Test Coverage Analysis for openaleph-tui
 
 **Analysis Date:** 2026-01-14
 **Version:** 0.5.0
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The aleph-tui codebase currently has **minimal test coverage** with only 4 unit tests covering approximately **15-20% of the codebase**. Tests focus exclusively on data deserialization (JSON/TOML parsing) while critical application logic, API integration, UI rendering, and event handling remain **completely untested**.
+The openaleph-tui codebase currently has **minimal test coverage** with only 4 unit tests covering approximately **15-20% of the codebase**. Tests focus exclusively on data deserialization (JSON/TOML parsing) while critical application logic, API integration, UI rendering, and event handling remain **completely untested**.
 
 **Critical Risk Areas:**
 - No API client testing (network operations, authentication, error handling)
@@ -627,7 +627,7 @@ pub mod test_helpers {
 
 Create `tests/integration_test.rs`:
 ```rust
-use aleph_tui::*;
+use openaleph_tui::*;
 
 #[tokio::test]
 async fn test_full_app_lifecycle() {
@@ -736,7 +736,7 @@ The test `test_deserialization_no_collection()` is currently ignored. Actions:
 
 ## Conclusion
 
-The aleph-tui project would significantly benefit from expanded test coverage, particularly in the areas of:
+The openaleph-tui project would significantly benefit from expanded test coverage, particularly in the areas of:
 
 1. **API integration and error handling** (highest risk)
 2. **User input and navigation** (highest user impact)
