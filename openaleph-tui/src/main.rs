@@ -52,7 +52,9 @@ async fn main() -> Result<()> {
         app.poll_fetch_result();
         app.poll_search_result();
         app.poll_investigations_result();
+        app.poll_datasets_result();
         app.maybe_start_investigations_search();
+        app.maybe_start_datasets_search();
 
         tui.draw(&mut app)?;
         match tui.events.next()? {

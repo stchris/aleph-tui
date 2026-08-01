@@ -79,6 +79,24 @@ impl Client {
             .await
     }
 
+    pub async fn datasets(&self, query: &str, limit: usize) -> reqwest::Result<DatasetsResponse> {
+        self.http
+            .get(format!("{}/api/2/collections", self.base_url))
+            .header(AUTHORIZATION, &self.authorization)
+            .header(USER_AGENT, &self.user_agent)
+            .query(&[
+                ("q", query.to_owned()),
+                ("limit", limit.to_string()),
+                ("exclude:category", "casefile".to_owned()),
+                ("sort", "created_at:desc".to_owned()),
+            ])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+    }
+
     async fn get<T>(&self, endpoint: &str) -> reqwest::Result<T>
     where
         T: serde::de::DeserializeOwned,
@@ -276,5 +294,42 @@ mod tests {
                 .map(|role| role.name.as_str()),
             Some("Ada Lovelace")
         );
+    }
+
+    #[tokio::test]
+    async fn searches_datasets() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/2/collections"))
+            .and(query_param("q", "offshore"))
+            .and(query_param("limit", "30"))
+            .and(query_param("exclude:category", "casefile"))
+            .and(query_param("sort", "created_at:desc"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{
+                    "id": "42",
+                    "label": "Offshore leaks",
+                    "category": "Leaks",
+                    "summary": "Company ownership data",
+                    "updated_at": "2026-07-30T12:00:00Z",
+                    "frequency": "never",
+                    "countries": ["vg", "pa"],
+                    "count": 1234
+                }],
+                "total": 1,
+                "query_q": "offshore"
+            })))
+            .mount(&server)
+            .await;
+
+        let response = Client::new(server.uri(), "test-token", "test")
+            .datasets("offshore", 30)
+            .await
+            .unwrap();
+
+        assert_eq!(response.total, 1);
+        assert_eq!(response.results[0].category, "Leaks");
+        assert_eq!(response.results[0].countries, ["vg", "pa"]);
+        assert_eq!(response.results[0].count, 1234);
     }
 }

@@ -59,18 +59,8 @@ pub fn render(app: &mut App, f: &mut Frame) {
     match app.active_tab {
         Tab::Search => render_search(app, f, root_chunks[1]),
         Tab::Investigations => render_investigations(app, f, root_chunks[1]),
+        Tab::Datasets => render_datasets(app, f, root_chunks[1]),
         Tab::Status => render_status(app, f, root_chunks[1]),
-        _ => {
-            let pane = Paragraph::new(format!("{} pane", app.active_tab.title()))
-                .alignment(Alignment::Center)
-                .block(
-                    Block::default()
-                        .title(app.active_tab.title())
-                        .borders(Borders::ALL)
-                        .border_type(ratatui::widgets::BorderType::Rounded),
-                );
-            f.render_widget(pane, root_chunks[1]);
-        }
     }
 
     f.render_widget(
@@ -356,6 +346,93 @@ fn render_investigations(app: &mut App, f: &mut Frame, area: Rect) {
     .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
     .highlight_symbol(">>");
     f.render_stateful_widget(table, chunks[3], &mut app.investigations_list_state);
+}
+
+fn render_datasets(app: &mut App, f: &mut Frame, area: Rect) {
+    let chunks = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(3),
+        Constraint::Length(2),
+        Constraint::Min(1),
+    ])
+    .split(area);
+    let search_area = Layout::horizontal([
+        Constraint::Percentage(15),
+        Constraint::Percentage(70),
+        Constraint::Percentage(15),
+    ])
+    .split(chunks[1])[1];
+
+    let search_title = if app.is_searching_datasets {
+        " Search datasets (loading...) "
+    } else {
+        " Search datasets "
+    };
+    let search = Paragraph::new(app.datasets_query.as_str()).block(
+        Block::default()
+            .title(search_title)
+            .borders(Borders::ALL)
+            .border_type(ratatui::widgets::BorderType::Rounded)
+            .border_style(Style::new().fg(Color::Cyan)),
+    );
+    f.render_widget(search, search_area);
+
+    let cursor_offset = app.datasets_query.chars().count() as u16;
+    let max_offset = search_area.width.saturating_sub(3);
+    if !app.show_profile_selector() && !app.show_help() {
+        f.set_cursor_position((
+            search_area.x + 1 + cursor_offset.min(max_offset),
+            search_area.y + 1,
+        ));
+    }
+
+    let summary = if !app.datasets_error.is_empty() {
+        Line::styled(app.datasets_error.clone(), Style::new().fg(Color::Red))
+    } else if app.is_searching_datasets {
+        Line::from("Loading datasets...")
+    } else if app.datasets_response.total > 0 {
+        Line::from(format!(
+            "{} datasets",
+            app.datasets_response.total.to_formatted_string(&Locale::en)
+        ))
+    } else if app.has_loaded_datasets {
+        Line::from("No datasets found")
+    } else {
+        Line::from("Loading datasets...")
+    };
+    f.render_widget(
+        Paragraph::new(summary).alignment(Alignment::Center),
+        chunks[2],
+    );
+
+    let rows = app.datasets_response.results.iter().map(|dataset| {
+        Row::new(vec![
+            dataset.label.clone(),
+            dataset.category.clone(),
+            dataset.countries.join(", "),
+            dataset
+                .updated_at
+                .split('T')
+                .next()
+                .unwrap_or_default()
+                .to_owned(),
+            dataset.count.to_formatted_string(&Locale::en),
+        ])
+    });
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Min(25),
+            Constraint::Length(18),
+            Constraint::Length(24),
+            Constraint::Length(14),
+            Constraint::Length(12),
+        ],
+    )
+    .header(Row::new(["Dataset", "Category", "Countries", "Updated", "Count"]).bottom_margin(1))
+    .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+    .highlight_symbol(">>");
+    f.render_stateful_widget(table, chunks[3], &mut app.datasets_list_state);
 }
 
 fn render_status(app: &mut App, f: &mut Frame, area: Rect) {

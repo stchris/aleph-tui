@@ -271,6 +271,33 @@ pub struct InvestigationCreator {
     pub name: String,
 }
 
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct DatasetsResponse {
+    pub results: Vec<Dataset>,
+    pub total: u64,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub query_q: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct Dataset {
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub category: String,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub summary: String,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub updated_at: String,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub frequency: String,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub countries: Vec<String>,
+    #[serde(default, deserialize_with = "deserialize_null_default")]
+    pub count: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::read_to_string;

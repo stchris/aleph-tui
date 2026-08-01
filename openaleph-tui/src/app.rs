@@ -1,6 +1,8 @@
 use chrono::{DateTime, Local};
 use color_eyre::eyre::eyre;
-use openaleph_api::{Client, InvestigationsResponse, Metadata, SearchResponse, Status};
+use openaleph_api::{
+    Client, DatasetsResponse, InvestigationsResponse, Metadata, SearchResponse, Status,
+};
 use ratatui::widgets::{ListState, TableState};
 use serde::{
     de::{MapAccess, Visitor},
@@ -26,6 +28,11 @@ pub struct InvestigationsFetchResult {
     pub error: Option<String>,
 }
 
+pub struct DatasetsFetchResult {
+    pub response: DatasetsResponse,
+    pub error: Option<String>,
+}
+
 pub struct App {
     pub status: Status,
     pub metadata: Metadata,
@@ -47,6 +54,12 @@ pub struct App {
     pub investigations_list_state: TableState,
     pub is_searching_investigations: bool,
     pub has_loaded_investigations: bool,
+    pub datasets_query: String,
+    pub datasets_response: DatasetsResponse,
+    pub datasets_error: String,
+    pub datasets_list_state: TableState,
+    pub is_searching_datasets: bool,
+    pub has_loaded_datasets: bool,
     pub active_tab: Tab,
     pub current_view: CurrentView,
     pub profile_tablestate: TableState,
@@ -60,6 +73,8 @@ pub struct App {
     search_result_tx: mpsc::Sender<SearchFetchResult>,
     investigations_result_rx: mpsc::Receiver<InvestigationsFetchResult>,
     investigations_result_tx: mpsc::Sender<InvestigationsFetchResult>,
+    datasets_result_rx: mpsc::Receiver<DatasetsFetchResult>,
+    datasets_result_tx: mpsc::Sender<DatasetsFetchResult>,
 }
 
 #[derive(Clone, Debug)]
@@ -184,6 +199,7 @@ pub mod tests {
         let (tx, rx) = mpsc::channel(1);
         let (search_tx, search_rx) = mpsc::channel(1);
         let (investigations_tx, investigations_rx) = mpsc::channel(1);
+        let (datasets_tx, datasets_rx) = mpsc::channel(1);
 
         App {
             status: Status::default(),
@@ -206,6 +222,12 @@ pub mod tests {
             investigations_list_state: TableState::default(),
             is_searching_investigations: false,
             has_loaded_investigations: false,
+            datasets_query: String::default(),
+            datasets_response: DatasetsResponse::default(),
+            datasets_error: String::default(),
+            datasets_list_state: TableState::default(),
+            is_searching_datasets: false,
+            has_loaded_datasets: false,
             active_tab: Tab::Search,
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
@@ -217,6 +239,8 @@ pub mod tests {
             search_result_tx: search_tx,
             investigations_result_rx: investigations_rx,
             investigations_result_tx: investigations_tx,
+            datasets_result_rx: datasets_rx,
+            datasets_result_tx: datasets_tx,
         }
     }
 
@@ -557,7 +581,12 @@ pub enum Tab {
 }
 
 impl Tab {
-    pub const ALL: [Self; 3] = [Self::Search, Self::Investigations, Self::Status];
+    pub const ALL: [Self; 4] = [
+        Self::Search,
+        Self::Investigations,
+        Self::Datasets,
+        Self::Status,
+    ];
 
     pub const fn title(self) -> &'static str {
         match self {
@@ -606,6 +635,7 @@ impl App {
         let (fetch_result_tx, fetch_result_rx) = mpsc::channel(1);
         let (search_result_tx, search_result_rx) = mpsc::channel(1);
         let (investigations_result_tx, investigations_result_rx) = mpsc::channel(1);
+        let (datasets_result_tx, datasets_result_rx) = mpsc::channel(1);
 
         Ok(Self {
             status: Status::default(),
@@ -627,6 +657,12 @@ impl App {
             investigations_list_state: TableState::default(),
             is_searching_investigations: false,
             has_loaded_investigations: false,
+            datasets_query: String::default(),
+            datasets_response: DatasetsResponse::default(),
+            datasets_error: String::default(),
+            datasets_list_state: TableState::default(),
+            is_searching_datasets: false,
+            has_loaded_datasets: false,
             active_tab: Tab::Search,
             current_view: CurrentView::Main,
             profile_tablestate: TableState::default(),
@@ -639,6 +675,8 @@ impl App {
             search_result_tx,
             investigations_result_rx,
             investigations_result_tx,
+            datasets_result_rx,
+            datasets_result_tx,
         })
     }
 
@@ -881,6 +919,79 @@ impl App {
         }
     }
 
+    pub fn push_datasets_search_char(&mut self, character: char) {
+        self.datasets_query.push(character);
+    }
+
+    pub fn pop_datasets_search_char(&mut self) {
+        self.datasets_query.pop();
+    }
+
+    pub fn start_datasets_search(&mut self) {
+        if self.is_searching_datasets {
+            return;
+        }
+
+        self.is_searching_datasets = true;
+        self.datasets_error.clear();
+        let query = self.datasets_query.trim().to_owned();
+        let tx = self.datasets_result_tx.clone();
+        let profile = self.current_profile();
+        let user_agent = format!("openaleph-tui/{}", self.version);
+
+        tokio::spawn(async move {
+            let client = Client::new(profile.url, profile.token, user_agent);
+            let result = match client.datasets(&query, 30).await {
+                Ok(response) => DatasetsFetchResult {
+                    response,
+                    error: None,
+                },
+                Err(error) => DatasetsFetchResult {
+                    response: DatasetsResponse::default(),
+                    error: Some(error.to_string()),
+                },
+            };
+            let _ = tx.send(result).await;
+        });
+    }
+
+    pub fn maybe_start_datasets_search(&mut self) {
+        if !self.has_loaded_datasets && !self.is_searching_datasets {
+            self.start_datasets_search();
+        }
+    }
+
+    pub fn poll_datasets_result(&mut self) {
+        match self.datasets_result_rx.try_recv() {
+            Ok(result) => {
+                self.datasets_response = result.response;
+                self.datasets_error = result.error.unwrap_or_default();
+                self.datasets_list_state
+                    .select((!self.datasets_response.results.is_empty()).then_some(0));
+                self.is_searching_datasets = false;
+                self.has_loaded_datasets = true;
+            }
+            Err(mpsc::error::TryRecvError::Empty) => {}
+            Err(mpsc::error::TryRecvError::Disconnected) => {
+                self.is_searching_datasets = false;
+            }
+        }
+    }
+
+    pub fn dataset_up(&mut self) {
+        let selected = self.datasets_list_state.selected().unwrap_or_default();
+        if selected > 0 {
+            self.datasets_list_state.select(Some(selected - 1));
+        }
+    }
+
+    pub fn dataset_down(&mut self) {
+        let selected = self.datasets_list_state.selected().unwrap_or_default();
+        if selected + 1 < self.datasets_response.results.len() {
+            self.datasets_list_state.select(Some(selected + 1));
+        }
+    }
+
     pub fn next_tab(&mut self) {
         self.active_tab = Tab::ALL[(self.active_tab.index() + 1) % Tab::ALL.len()];
     }
@@ -959,6 +1070,11 @@ impl App {
         self.investigations_error.clear();
         self.investigations_list_state.select(None);
         self.has_loaded_investigations = false;
+        self.datasets_query.clear();
+        self.datasets_response = DatasetsResponse::default();
+        self.datasets_error.clear();
+        self.datasets_list_state.select(None);
+        self.has_loaded_datasets = false;
     }
 
     pub(crate) fn print_version(&self) {

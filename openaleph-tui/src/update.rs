@@ -20,8 +20,10 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         _ if app.show_help() => {}
         KeyCode::Esc => app.quit(),
         KeyCode::Char('q')
-            if !matches!(app.active_tab, Tab::Search | Tab::Investigations)
-                || app.show_profile_selector() =>
+            if !matches!(
+                app.active_tab,
+                Tab::Search | Tab::Investigations | Tab::Datasets
+            ) || app.show_profile_selector() =>
         {
             app.quit()
         }
@@ -29,8 +31,10 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             app.toggle_profile_selector()
         }
         KeyCode::Char('p')
-            if !matches!(app.active_tab, Tab::Search | Tab::Investigations)
-                || app.show_profile_selector() =>
+            if !matches!(
+                app.active_tab,
+                Tab::Search | Tab::Investigations | Tab::Datasets
+            ) || app.show_profile_selector() =>
         {
             app.toggle_profile_selector()
         }
@@ -43,6 +47,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             }
             false if app.active_tab == Tab::Investigations && key_event.code == KeyCode::Up => {
                 app.investigation_up()
+            }
+            false if app.active_tab == Tab::Datasets && key_event.code == KeyCode::Up => {
+                app.dataset_up()
             }
             false if app.active_tab == Tab::Status => app.collection_up(),
             false
@@ -61,6 +68,14 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             {
                 app.push_investigations_search_char('k')
             }
+            false
+                if app.active_tab == Tab::Datasets
+                    && !key_event.modifiers.intersects(
+                        KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
+                    ) =>
+            {
+                app.push_datasets_search_char('k')
+            }
             false => {}
         },
         KeyCode::Down | KeyCode::Char('j') => match app.show_profile_selector() {
@@ -70,6 +85,9 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             }
             false if app.active_tab == Tab::Investigations && key_event.code == KeyCode::Down => {
                 app.investigation_down()
+            }
+            false if app.active_tab == Tab::Datasets && key_event.code == KeyCode::Down => {
+                app.dataset_down()
             }
             false if app.active_tab == Tab::Status => app.collection_down(),
             false
@@ -88,6 +106,14 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
             {
                 app.push_investigations_search_char('j')
             }
+            false
+                if app.active_tab == Tab::Datasets
+                    && !key_event.modifiers.intersects(
+                        KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
+                    ) =>
+            {
+                app.push_datasets_search_char('j')
+            }
             false => {}
         },
         KeyCode::Enter if app.current_view == CurrentView::ProfileSwitcher => {
@@ -97,10 +123,12 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
         KeyCode::Enter if app.active_tab == Tab::Investigations => {
             app.start_investigations_search()
         }
+        KeyCode::Enter if app.active_tab == Tab::Datasets => app.start_datasets_search(),
         KeyCode::Backspace if app.active_tab == Tab::Search => app.pop_search_char(),
         KeyCode::Backspace if app.active_tab == Tab::Investigations => {
             app.pop_investigations_search_char()
         }
+        KeyCode::Backspace if app.active_tab == Tab::Datasets => app.pop_datasets_search_char(),
         KeyCode::Char(character)
             if app.active_tab == Tab::Search
                 && !app.show_profile_selector()
@@ -118,6 +146,15 @@ pub fn update(app: &mut App, key_event: KeyEvent) {
                 ) =>
         {
             app.push_investigations_search_char(character);
+        }
+        KeyCode::Char(character)
+            if app.active_tab == Tab::Datasets
+                && !app.show_profile_selector()
+                && !key_event.modifiers.intersects(
+                    KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
+                ) =>
+        {
+            app.push_datasets_search_char(character);
         }
         _ => {}
     };
@@ -399,6 +436,8 @@ mod tests {
 
         update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
         assert_eq!(app.active_tab, Tab::Investigations);
+        update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert_eq!(app.active_tab, Tab::Datasets);
         update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
         assert_eq!(app.active_tab, Tab::Status);
         update(&mut app, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
