@@ -4,12 +4,21 @@ use crate::app::{App, CurrentView, Tab};
 
 pub fn update(app: &mut App, key_event: KeyEvent) {
     match key_event.code {
-        KeyCode::Esc => app.quit(),
+        KeyCode::Esc if app.show_help() => app.toggle_help(),
+        KeyCode::Char('?')
+            if !key_event
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER) =>
+        {
+            app.toggle_help()
+        }
         KeyCode::Char('c') | KeyCode::Char('C')
             if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
         {
             app.quit()
         }
+        _ if app.show_help() => {}
+        KeyCode::Esc => app.quit(),
         KeyCode::Char('q')
             if !matches!(app.active_tab, Tab::Search | Tab::Investigations)
                 || app.show_profile_selector() =>
@@ -184,6 +193,48 @@ mod tests {
             KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE),
         );
         assert_eq!(app.current_view, CurrentView::Main);
+    }
+
+    #[test]
+    fn test_question_mark_toggles_help() {
+        let mut app = create_test_app();
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT),
+        );
+        assert_eq!(app.current_view, CurrentView::Help);
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT),
+        );
+        assert_eq!(app.current_view, CurrentView::Main);
+    }
+
+    #[test]
+    fn test_escape_closes_help_without_quitting() {
+        let mut app = create_test_app();
+        app.toggle_help();
+
+        update(&mut app, KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+
+        assert_eq!(app.current_view, CurrentView::Main);
+        assert!(!app.should_quit);
+    }
+
+    #[test]
+    fn test_help_blocks_other_input() {
+        let mut app = create_test_app();
+        app.toggle_help();
+
+        update(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+        );
+
+        assert!(app.search_query.is_empty());
+        assert_eq!(app.current_view, CurrentView::Help);
     }
 
     #[test]

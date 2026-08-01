@@ -7,7 +7,7 @@ use ratatui::{
     prelude::Frame,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Padding, Paragraph, Row, Table, Tabs},
+    widgets::{Block, Borders, Clear, List, ListItem, Padding, Paragraph, Row, Table, Tabs},
 };
 
 use crate::app::{App, Tab};
@@ -104,6 +104,39 @@ pub fn render(app: &mut App, f: &mut Frame) {
             &mut app.profile_tablestate,
         );
     }
+
+    if app.show_help() {
+        render_help(f);
+    }
+}
+
+fn render_help(f: &mut Frame) {
+    let area = centered_rect(60, 60, f.area());
+    let block = Block::default()
+        .title("Keyboard shortcuts")
+        .title_bottom("Press ? or Esc to close")
+        .borders(Borders::ALL)
+        .border_type(ratatui::widgets::BorderType::Rounded)
+        .padding(Padding::horizontal(1));
+    let rows = [
+        ("?", "Open or close this help"),
+        ("Tab / Shift+Tab", "Next or previous tab"),
+        ("Ctrl+P", "Open or close the profile selector"),
+        ("Up / Down", "Move through results or selections"),
+        ("j / k", "Move through non-search selections"),
+        ("Enter", "Search or confirm a selection"),
+        ("Backspace", "Delete from a search query"),
+        ("Esc", "Close help or quit"),
+        ("Ctrl+C", "Quit"),
+        ("q", "Quit outside search fields"),
+    ]
+    .map(|(key, description)| Row::new([key, description]));
+    let shortcuts = Table::new(rows, [Constraint::Length(18), Constraint::Min(20)])
+        .column_spacing(2)
+        .block(block);
+
+    f.render_widget(Clear, area);
+    f.render_widget(shortcuts, area);
 }
 
 fn render_search(app: &mut App, f: &mut Frame, area: Rect) {
@@ -137,7 +170,7 @@ fn render_search(app: &mut App, f: &mut Frame, area: Rect) {
 
     let cursor_offset = app.search_query.chars().count() as u16;
     let max_offset = search_area.width.saturating_sub(3);
-    if !app.show_profile_selector() {
+    if !app.show_profile_selector() && !app.show_help() {
         f.set_cursor_position((
             search_area.x + 1 + cursor_offset.min(max_offset),
             search_area.y + 1,
@@ -249,7 +282,7 @@ fn render_investigations(app: &mut App, f: &mut Frame, area: Rect) {
 
     let cursor_offset = app.investigations_query.chars().count() as u16;
     let max_offset = search_area.width.saturating_sub(3);
-    if !app.show_profile_selector() {
+    if !app.show_profile_selector() && !app.show_help() {
         f.set_cursor_position((
             search_area.x + 1 + cursor_offset.min(max_offset),
             search_area.y + 1,
@@ -495,7 +528,7 @@ fn render_status_bar(app: &App, f: &mut Frame, area: Rect) {
     );
     f.render_widget(
         Block::default()
-            .title("Shortcuts: `Tab`/`Shift+Tab` - tabs, `Ctrl+P` - profile, `Esc` - quit")
+            .title("? - help")
             .title_alignment(Alignment::Right),
         status_bar_chunks[2],
     );

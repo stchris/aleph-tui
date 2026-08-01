@@ -544,6 +544,7 @@ pub mod tests {
 pub enum CurrentView {
     Main,
     ProfileSwitcher,
+    Help,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -717,12 +718,23 @@ impl App {
     pub fn toggle_profile_selector(&mut self) {
         self.current_view = match self.current_view {
             CurrentView::Main => CurrentView::ProfileSwitcher,
-            CurrentView::ProfileSwitcher => CurrentView::Main,
+            CurrentView::ProfileSwitcher | CurrentView::Help => CurrentView::Main,
         }
     }
 
     pub fn show_profile_selector(&self) -> bool {
         self.current_view == CurrentView::ProfileSwitcher
+    }
+
+    pub fn toggle_help(&mut self) {
+        self.current_view = match self.current_view {
+            CurrentView::Help => CurrentView::Main,
+            CurrentView::Main | CurrentView::ProfileSwitcher => CurrentView::Help,
+        }
+    }
+
+    pub fn show_help(&self) -> bool {
+        self.current_view == CurrentView::Help
     }
 
     pub fn push_search_char(&mut self, character: char) {
