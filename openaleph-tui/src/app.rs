@@ -8,7 +8,10 @@ use serde::{
     de::{MapAccess, Visitor},
     Deserialize,
 };
-use std::fs::read_to_string;
+use std::{
+    fs::{read_to_string, rename},
+    path::{Path, PathBuf},
+};
 use tokio::sync::mpsc;
 
 /// Result of a background fetch operation
@@ -252,6 +255,44 @@ pub mod tests {
     }
 
     // Configuration deserialization tests
+    #[test]
+    fn test_config_path_migrates_legacy_file() {
+        let home_dir = tempfile::tempdir().expect("Failed to create temporary home directory");
+        let config_dir = home_dir.path().join(".config");
+        std::fs::create_dir(&config_dir).expect("Failed to create config directory");
+        let legacy_path = config_dir.join("aleph-tui.toml");
+        std::fs::write(&legacy_path, "configuration").expect("Failed to write legacy config");
+
+        let path = config_path(home_dir.path()).expect("Failed to resolve config path");
+
+        assert_eq!(path, config_dir.join("openaleph-tui.toml"));
+        assert!(!legacy_path.exists());
+        assert_eq!(
+            std::fs::read_to_string(path).expect("Failed to read migrated config"),
+            "configuration"
+        );
+    }
+
+    #[test]
+    fn test_config_path_does_not_overwrite_new_file() {
+        let home_dir = tempfile::tempdir().expect("Failed to create temporary home directory");
+        let config_dir = home_dir.path().join(".config");
+        std::fs::create_dir(&config_dir).expect("Failed to create config directory");
+        let legacy_path = config_dir.join("aleph-tui.toml");
+        let new_path = config_dir.join("openaleph-tui.toml");
+        std::fs::write(&legacy_path, "legacy").expect("Failed to write legacy config");
+        std::fs::write(&new_path, "new").expect("Failed to write new config");
+
+        let path = config_path(home_dir.path()).expect("Failed to resolve config path");
+
+        assert_eq!(path, new_path);
+        assert!(legacy_path.exists());
+        assert_eq!(
+            std::fs::read_to_string(path).expect("Failed to read new config"),
+            "new"
+        );
+    }
+
     #[test]
     fn test_de_profiles() {
         let raw = r#"
@@ -602,11 +643,35 @@ impl Tab {
     }
 }
 
+fn config_path(home_dir: &Path) -> color_eyre::Result<PathBuf> {
+    let config_dir = home_dir.join(".config");
+    let legacy_path = config_dir.join("aleph-tui.toml");
+    let config_path = config_dir.join("openaleph-tui.toml");
+
+    if legacy_path.is_file() && !config_path.exists() {
+        rename(&legacy_path, &config_path).map_err(|e| {
+            eyre!(
+                "Failed to migrate config file from {} to {}: {}",
+                legacy_path.display(),
+                config_path.display(),
+                e
+            )
+        })?;
+        println!(
+            "Migrated configuration file from {} to {}",
+            legacy_path.display(),
+            config_path.display()
+        );
+    }
+
+    Ok(config_path)
+}
+
 impl App {
     pub fn new() -> color_eyre::Result<Self> {
-        let mut config_path =
+        let home_dir =
             home::home_dir().ok_or_else(|| eyre!("Could not determine home directory"))?;
-        config_path.push(".config/aleph-tui.toml");
+        let config_path = config_path(&home_dir)?;
 
         let config = read_to_string(&config_path).map_err(|e| {
             eyre!(

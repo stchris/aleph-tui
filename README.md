@@ -17,7 +17,7 @@ brew install stchris/homebrew-formulae/openaleph-tui
 
 ## Configuration
 
-`openaleph-tui` assumes the configuration to live in `$HOME/.config/aleph-tui.toml`. It allows you to connect to multiple OpenAleph instances through `profiles`. Here is an example file:
+`openaleph-tui` assumes the configuration to live in `$HOME/.config/openaleph-tui.toml`. Existing configuration at `$HOME/.config/aleph-tui.toml` is migrated automatically. It allows you to connect to multiple OpenAleph instances through `profiles`. Here is an example file:
 
 ```toml
 default = "local"
